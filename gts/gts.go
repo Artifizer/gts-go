@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -17,6 +19,12 @@ const (
 	GtsPrefix = "gts."
 	// MaxIDLength is the maximum allowed length for a GTS identifier
 	MaxIDLength = 1024
+)
+
+var (
+	// GtsNamespace is the UUID namespace for GTS identifiers
+	// Generated as uuid5(NAMESPACE_URL, "gts")
+	GtsNamespace = uuid.NewSHA1(uuid.NameSpaceURL, []byte("gts"))
 )
 
 var (
@@ -137,6 +145,12 @@ func IsValidGtsID(s string) bool {
 // IsType returns true if this identifier represents a type (ends with ~)
 func (g *GtsID) IsType() bool {
 	return strings.HasSuffix(g.ID, "~")
+}
+
+// ToUUID generates a deterministic UUID (v5) from the GTS identifier
+// The UUID is generated using uuid5(GTS_NAMESPACE, gts_id)
+func (g *GtsID) ToUUID() uuid.UUID {
+	return uuid.NewSHA1(GtsNamespace, []byte(g.ID))
 }
 
 // splitPreservingTilde splits a string by ~ while preserving the ~ at the end of each part

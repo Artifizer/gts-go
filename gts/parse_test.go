@@ -203,11 +203,11 @@ func TestParseID_ChainedWithInstance(t *testing.T) {
 // TestParseID_VersionComponents tests parsing various version formats
 func TestParseID_VersionComponents(t *testing.T) {
 	tests := []struct {
-		name      string
-		id        string
-		verMajor  int
-		verMinor  *int
-		isType    bool
+		name     string
+		id       string
+		verMajor int
+		verMinor *int
+		isType   bool
 	}{
 		{
 			name:     "Major version only",

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -89,10 +90,8 @@ func (r *GtsFileReader) collectFiles() {
 
 				// Skip excluded directories
 				if info.IsDir() {
-					for _, exclude := range ExcludeList {
-						if info.Name() == exclude {
-							return filepath.SkipDir
-						}
+					if slices.Contains(ExcludeList, info.Name()) {
+						return filepath.SkipDir
 					}
 					return nil
 				}

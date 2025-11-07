@@ -28,6 +28,7 @@ type JsonEntity struct {
 	File                  *JsonFile
 	ListSequence          *int
 	Label                 string
+	GtsRefs               []*GtsReference // All GTS ID references found in content
 }
 
 // ExtractIDResult holds the result of extracting ID information from JSON content
@@ -75,6 +76,9 @@ func NewJsonEntityWithFile(content map[string]any, cfg *GtsConfig, file *JsonFil
 		gtsID, _ := NewGtsID(entityIDValue)
 		entity.GtsID = gtsID
 	}
+
+	// Extract GTS references from content
+	entity.GtsRefs = extractGtsReferences(content)
 
 	// Set label
 	entity.setLabel()

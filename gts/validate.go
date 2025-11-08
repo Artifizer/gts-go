@@ -36,9 +36,9 @@ func (l *gtsURLLoader) Load(url string) (any, error) {
 
 // ValidationResult represents the result of validating an instance
 type ValidationResult struct {
-	ID    string
-	OK    bool
-	Error string
+	ID    string `json:"id"`
+	OK    bool   `json:"ok"`
+	Error string `json:"error"`
 }
 
 // ValidateInstance validates an object instance against its schema
@@ -112,6 +112,21 @@ func (s *GtsStore) ValidateInstance(gtsID string) *ValidationResult {
 func (s *GtsStore) validateWithSchema(instance map[string]any, schema map[string]any) error {
 	// Create a custom compiler with GTS reference resolution
 	compiler := jsonschema.NewCompiler()
+
+	// Register lenient format validators to match Python's jsonschema behavior
+	// Python's jsonschema library does NOT validate formats by default
+	lenientValidator := func(v any) error { return nil }
+	formats := []string{
+		"uuid", "date-time", "date", "time", "email", "hostname",
+		"ipv4", "ipv6", "uri", "uri-reference", "iri", "iri-reference",
+		"uri-template", "json-pointer", "relative-json-pointer", "regex",
+	}
+	for _, fmt := range formats {
+		compiler.RegisterFormat(&jsonschema.Format{
+			Name:     fmt,
+			Validate: lenientValidator,
+		})
+	}
 
 	// Set up custom loader for GTS ID references (matches Python's resolve_gts_ref handler)
 	compiler.UseLoader(&gtsURLLoader{store: s})

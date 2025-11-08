@@ -33,11 +33,11 @@ type JsonEntity struct {
 
 // ExtractIDResult holds the result of extracting ID information from JSON content
 type ExtractIDResult struct {
-	ID                    string
-	SchemaID              string
-	SelectedEntityField   string
-	SelectedSchemaIDField string
-	IsSchema              bool
+	ID                    string  `json:"id"`
+	SchemaID              string  `json:"schema_id"`
+	SelectedEntityField   *string `json:"selected_entity_field"`
+	SelectedSchemaIDField *string `json:"selected_schema_id_field"`
+	IsSchema              bool    `json:"is_schema"`
 }
 
 // NewJsonEntity creates a JsonEntity from JSON content using the provided config
@@ -180,13 +180,14 @@ func (e *JsonEntity) calcJSONSchemaID(cfg *GtsConfig, entityIDValue string) stri
 	if entityIDValue != "" && IsValidGtsID(entityIDValue) {
 		// If entity ID ends with ~, it's already a type ID
 		if strings.HasSuffix(entityIDValue, "~") {
-			e.SelectedSchemaIDField = e.SelectedEntityField
+			// Don't set SelectedSchemaIDField - the entity ID itself is a type
 			return entityIDValue
 		}
 
 		// Find last ~ and return everything up to and including it
 		lastTilde := strings.LastIndex(entityIDValue, "~")
 		if lastTilde > 0 {
+			// Set SelectedSchemaIDField to the entity field since we extracted from it
 			e.SelectedSchemaIDField = e.SelectedEntityField
 			return entityIDValue[:lastTilde+1]
 		}
@@ -200,10 +201,18 @@ func ExtractID(content map[string]any, cfg *GtsConfig) *ExtractIDResult {
 	entity := NewJsonEntity(content, cfg)
 
 	result := &ExtractIDResult{
-		SchemaID:              entity.SchemaID,
-		SelectedEntityField:   entity.SelectedEntityField,
-		SelectedSchemaIDField: entity.SelectedSchemaIDField,
-		IsSchema:              entity.IsSchema,
+		SchemaID: entity.SchemaID,
+		IsSchema: entity.IsSchema,
+	}
+
+	// Set SelectedEntityField as pointer (nil if empty)
+	if entity.SelectedEntityField != "" {
+		result.SelectedEntityField = &entity.SelectedEntityField
+	}
+
+	// Set SelectedSchemaIDField as pointer (nil if empty)
+	if entity.SelectedSchemaIDField != "" {
+		result.SelectedSchemaIDField = &entity.SelectedSchemaIDField
 	}
 
 	if entity.GtsID != nil {

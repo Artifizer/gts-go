@@ -61,8 +61,12 @@ func TestExtractID_BasicEntityID(t *testing.T) {
 			if result.ID != tt.expectedID {
 				t.Errorf("Expected ID %q, got %q", tt.expectedID, result.ID)
 			}
-			if result.SelectedEntityField != tt.expectedField {
-				t.Errorf("Expected field %q, got %q", tt.expectedField, result.SelectedEntityField)
+			if result.SelectedEntityField == nil || *result.SelectedEntityField != tt.expectedField {
+				var got string
+				if result.SelectedEntityField != nil {
+					got = *result.SelectedEntityField
+				}
+				t.Errorf("Expected field %q, got %q", tt.expectedField, got)
 			}
 		})
 	}
@@ -100,7 +104,7 @@ func TestExtractID_SchemaID(t *testing.T) {
 				"gtsId": "gts.vendor.package.namespace.type.v0~",
 			},
 			expectedSchemaID:    "gts.vendor.package.namespace.type.v0~",
-			expectedSchemaField: "gtsId",
+			expectedSchemaField: "", // Not set - entity ID itself is a type
 		},
 	}
 
@@ -110,8 +114,14 @@ func TestExtractID_SchemaID(t *testing.T) {
 			if result.SchemaID != tt.expectedSchemaID {
 				t.Errorf("Expected SchemaID %q, got %q", tt.expectedSchemaID, result.SchemaID)
 			}
-			if result.SelectedSchemaIDField != tt.expectedSchemaField {
-				t.Errorf("Expected schema field %q, got %q", tt.expectedSchemaField, result.SelectedSchemaIDField)
+
+			// Handle both empty string expectation and actual value
+			var got string
+			if result.SelectedSchemaIDField != nil {
+				got = *result.SelectedSchemaIDField
+			}
+			if got != tt.expectedSchemaField {
+				t.Errorf("Expected schema field %q, got %q", tt.expectedSchemaField, got)
 			}
 		})
 	}
@@ -191,14 +201,22 @@ func TestExtractID_CustomConfig(t *testing.T) {
 	if result.ID != "gts.vendor.package.namespace.type.v0" {
 		t.Errorf("Expected ID from customId field, got %q", result.ID)
 	}
-	if result.SelectedEntityField != "customId" {
-		t.Errorf("Expected customId field, got %q", result.SelectedEntityField)
+	if result.SelectedEntityField == nil || *result.SelectedEntityField != "customId" {
+		var got string
+		if result.SelectedEntityField != nil {
+			got = *result.SelectedEntityField
+		}
+		t.Errorf("Expected customId field, got %q", got)
 	}
 	if result.SchemaID != "gts.vendor.package.namespace.type.v0~" {
 		t.Errorf("Expected SchemaID from customType field, got %q", result.SchemaID)
 	}
-	if result.SelectedSchemaIDField != "customType" {
-		t.Errorf("Expected customType field, got %q", result.SelectedSchemaIDField)
+	if result.SelectedSchemaIDField == nil || *result.SelectedSchemaIDField != "customType" {
+		var got string
+		if result.SelectedSchemaIDField != nil {
+			got = *result.SelectedSchemaIDField
+		}
+		t.Errorf("Expected customType field, got %q", got)
 	}
 }
 
@@ -214,8 +232,8 @@ func TestExtractID_NoValidID(t *testing.T) {
 	if result.ID != "" {
 		t.Errorf("Expected empty ID, got %q", result.ID)
 	}
-	if result.SelectedEntityField != "" {
-		t.Errorf("Expected empty SelectedEntityField, got %q", result.SelectedEntityField)
+	if result.SelectedEntityField != nil {
+		t.Errorf("Expected nil SelectedEntityField, got %q", *result.SelectedEntityField)
 	}
 }
 

@@ -147,3 +147,42 @@ func (s *GtsStore) Items() map[string]*JsonEntity {
 func (s *GtsStore) Count() int {
 	return len(s.byID)
 }
+
+// EntityInfo represents basic information about an entity
+type EntityInfo struct {
+	ID       string `json:"id"`
+	SchemaID string `json:"schema_id"`
+	IsSchema bool   `json:"is_schema"`
+}
+
+// ListResult represents the result of listing entities
+type ListResult struct {
+	Entities []EntityInfo `json:"entities"`
+	Count    int          `json:"count"`
+	Total    int          `json:"total"`
+}
+
+// List returns a list of entities up to the specified limit
+func (s *GtsStore) List(limit int) *ListResult {
+	total := len(s.byID)
+	entities := []EntityInfo{}
+
+	count := 0
+	for id, entity := range s.byID {
+		if count >= limit {
+			break
+		}
+		entities = append(entities, EntityInfo{
+			ID:       id,
+			SchemaID: entity.SchemaID,
+			IsSchema: entity.IsSchema,
+		})
+		count++
+	}
+
+	return &ListResult{
+		Entities: entities,
+		Count:    count,
+		Total:    total,
+	}
+}

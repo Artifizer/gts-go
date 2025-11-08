@@ -16,7 +16,7 @@ type QueryResult struct {
 	Error   string           `json:"error"`
 	Count   int              `json:"count"`
 	Limit   int              `json:"limit"`
-	Results []map[string]any `json:"results,omitempty"`
+	Results []map[string]any `json:"results"`
 }
 
 // Query filters entities by a GTS query expression
@@ -36,7 +36,7 @@ func (s *GtsStore) Query(expr string, limit int) *QueryResult {
 		Error:   "",
 		Count:   0,
 		Limit:   limit,
-		Results: []map[string]any{},
+		Results: make([]map[string]any, 0),
 	}
 
 	// Parse the query expression to extract base pattern and filters
@@ -95,9 +95,14 @@ func (s *GtsStore) parseQueryExpression(expr string) (string, map[string]string,
 		// Extract filter string (remove trailing ])
 		filterStr := strings.TrimSpace(parts[1])
 		if !strings.HasSuffix(filterStr, "]") {
-			return "", nil, errors.New("invalid query: missing closing bracket ']'")
+			return "", nil, errors.New("Invalid query: missing closing bracket ']'")
 		}
 		filterStr = strings.TrimSuffix(filterStr, "]")
+
+		// Check if base pattern ends with ~ or ~* (type ID/pattern) - filters not allowed on type queries
+		if strings.HasSuffix(basePattern, "~") || strings.HasSuffix(basePattern, "~*") {
+			return "", nil, errors.New("Invalid query: filters cannot be used with type patterns (ending with ~ or ~*)")
+		}
 
 		// Parse filters
 		filters = s.parseQueryFilters(filterStr)
@@ -139,24 +144,31 @@ func (s *GtsStore) validateQueryPattern(basePattern string, isWildcard bool) err
 	if isWildcard {
 		// Wildcard pattern must end with .* or ~*
 		if !strings.HasSuffix(basePattern, ".*") && !strings.HasSuffix(basePattern, "~*") {
-			return errors.New("invalid query: wildcard patterns must end with .* or ~*")
+			return errors.New("Invalid query: wildcard patterns must end with .* or ~*")
 		}
 
 		// Validate as wildcard pattern
 		_, err := validateWildcard(basePattern)
 		if err != nil {
-			return fmt.Errorf("invalid query: %w", err)
+			return fmt.Errorf("Invalid query: %w", err)
 		}
 	} else {
 		// Non-wildcard pattern must be a complete valid GTS ID
 		gtsID, err := NewGtsID(basePattern)
 		if err != nil {
-			return fmt.Errorf("invalid query: %w", err)
+			return fmt.Errorf("Invalid query: %w", err)
 		}
 
 		// Must have at least one valid segment
 		if len(gtsID.Segments) == 0 {
-			return errors.New("invalid query: GTS ID has no valid segments")
+			return errors.New("Invalid query: GTS ID has no valid segments")
+		}
+
+		// Check if pattern is incomplete (missing version or type)
+		// A complete GTS ID must end with a version (v1, v1.2) or ~ for types
+		lastSeg := gtsID.Segments[len(gtsID.Segments)-1]
+		if !lastSeg.IsType && lastSeg.VerMajor == 0 {
+			return errors.New("Invalid query: incomplete GTS ID pattern")
 		}
 	}
 

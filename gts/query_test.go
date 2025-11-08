@@ -99,8 +99,8 @@ func TestQuery_InvalidQuery_PartialID(t *testing.T) {
 		t.Error("Expected error for partial GTS ID without wildcard")
 	}
 
-	if !containsString(result.Error, "invalid query") {
-		t.Errorf("Expected 'invalid query' in error, got: %s", result.Error)
+	if !containsString(result.Error, "Invalid query") {
+		t.Errorf("Expected 'Invalid query' in error, got: %s", result.Error)
 	}
 }
 
@@ -114,8 +114,8 @@ func TestQuery_InvalidQuery_MissingNamespace(t *testing.T) {
 		t.Error("Expected error for missing namespace")
 	}
 
-	if !containsString(result.Error, "invalid query") {
-		t.Errorf("Expected 'invalid query' in error, got: %s", result.Error)
+	if !containsString(result.Error, "Invalid query") {
+		t.Errorf("Expected 'Invalid query' in error, got: %s", result.Error)
 	}
 }
 
@@ -129,8 +129,8 @@ func TestQuery_InvalidQuery_IncompleteVersion(t *testing.T) {
 		t.Error("Expected error for incomplete version")
 	}
 
-	if !containsString(result.Error, "invalid query") {
-		t.Errorf("Expected 'invalid query' in error, got: %s", result.Error)
+	if !containsString(result.Error, "Invalid query") {
+		t.Errorf("Expected 'Invalid query' in error, got: %s", result.Error)
 	}
 }
 
@@ -144,8 +144,8 @@ func TestQuery_InvalidQuery_NoVersion(t *testing.T) {
 		t.Error("Expected error for no version in instance ID")
 	}
 
-	if !containsString(result.Error, "invalid query") {
-		t.Errorf("Expected 'invalid query' in error, got: %s", result.Error)
+	if !containsString(result.Error, "Invalid query") {
+		t.Errorf("Expected 'Invalid query' in error, got: %s", result.Error)
 	}
 }
 
@@ -317,8 +317,8 @@ func TestQuery_InvalidFilterByAttribute(t *testing.T) {
 		t.Error("Expected error for invalid filter syntax")
 	}
 
-	if !containsString(result.Error, "invalid query") {
-		t.Errorf("Expected 'invalid query' in error, got: %s", result.Error)
+	if !containsString(result.Error, "Invalid query") {
+		t.Errorf("Expected 'Invalid query' in error, got: %s", result.Error)
 	}
 }
 

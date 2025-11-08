@@ -7,21 +7,21 @@ package gts
 
 // ParseIDSegment represents a parsed segment component from a GTS identifier
 type ParseIDSegment struct {
-	Vendor    string
-	Package   string
-	Namespace string
-	Type      string
-	VerMajor  int
-	VerMinor  *int
-	IsType    bool
+	Vendor    string `json:"vendor"`
+	Package   string `json:"package"`
+	Namespace string `json:"namespace"`
+	Type      string `json:"type"`
+	VerMajor  int    `json:"ver_major"`
+	VerMinor  *int   `json:"ver_minor"`
+	IsType    bool   `json:"is_type"`
 }
 
 // ParseIDResult represents the result of parsing a GTS identifier
 type ParseIDResult struct {
-	ID       string
-	OK       bool
-	Segments []ParseIDSegment
-	Error    string
+	ID       string           `json:"id"`
+	OK       bool             `json:"ok"`
+	Segments []ParseIDSegment `json:"segments"`
+	Error    string           `json:"error"`
 }
 
 // ParseID decomposes a GTS identifier into its constituent parts

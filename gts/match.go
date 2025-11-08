@@ -12,10 +12,10 @@ import (
 
 // MatchIDResult represents the result of matching a GTS identifier against a pattern
 type MatchIDResult struct {
-	Candidate string
-	Pattern   string
-	Match     bool
-	Error     string
+	Candidate string `json:"candidate"`
+	Pattern   string `json:"pattern"`
+	Match     bool   `json:"match"`
+	Error     string `json:"error"`
 }
 
 // InvalidWildcardError represents an error when a wildcard pattern is invalid

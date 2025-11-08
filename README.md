@@ -15,10 +15,10 @@ Featureset:
 - [x] **OP#5 - ID to UUID Mapping**: Generate deterministic UUIDs from GTS identifiers
 - [x] **OP#6 - Schema Validation**: Validate object instances against their corresponding schemas
 - [x] **OP#7 - Relationship Resolution**: Load all schemas and instances, resolve inter-dependencies, and detect broken references
-- [ ] **OP#8 - Compatibility Checking**: Verify that schemas with different MINOR versions are compatible
-- [ ] **OP#8.1 - Backward compatibility checking**
-- [ ] **OP#8.2 - Forward compatibility checking**
-- [ ] **OP#8.3 - Full compatibility checking**
+- [x] **OP#8 - Compatibility Checking**: Verify that schemas with different MINOR versions are compatible
+- [x] **OP#8.1 - Backward compatibility checking**
+- [x] **OP#8.2 - Forward compatibility checking**
+- [x] **OP#8.3 - Full compatibility checking**
 - [ ] **OP#9 - Version Casting**: Transform instances between compatible MINOR versions
 - [ ] **OP#10 - Query Execution**: Filter identifier collections using the GTS query language
 - [ ] **OP#11 - Attribute Access**: Retrieve property values and metadata using the attribute selector (`@`)

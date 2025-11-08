@@ -19,8 +19,8 @@ Featureset:
 - [x] **OP#8.1 - Backward compatibility checking**
 - [x] **OP#8.2 - Forward compatibility checking**
 - [x] **OP#8.3 - Full compatibility checking**
-- [ ] **OP#9 - Version Casting**: Transform instances between compatible MINOR versions
-- [ ] **OP#10 - Query Execution**: Filter identifier collections using the GTS query language
+- [x] **OP#9 - Version Casting**: Transform instances between compatible MINOR versions
+- [x] **OP#10 - Query Execution**: Filter identifier collections using the GTS query language
 - [ ] **OP#11 - Attribute Access**: Retrieve property values and metadata using the attribute selector (`@`)
 
 TODO - need a file with Go code snippets for all Ops above

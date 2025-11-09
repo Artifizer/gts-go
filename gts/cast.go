@@ -25,31 +25,30 @@ func (s *GtsStore) Cast(instanceID, toSchemaID string) (*CastResult, error) {
 	// Get instance entity
 	instanceEntity := s.Get(instanceID)
 	if instanceEntity == nil {
-		return nil, fmt.Errorf("instance not found: %s", instanceID)
+		return nil, &StoreGtsObjectNotFoundError{EntityID: instanceID}
 	}
 
 	// Get target schema
 	toSchema := s.Get(toSchemaID)
 	if toSchema == nil {
-		return nil, fmt.Errorf("target schema not found: %s", toSchemaID)
+		return nil, &StoreGtsSchemaNotFoundError{EntityID: toSchemaID}
 	}
 
 	// Determine source schema
 	var fromSchemaID string
 	var fromSchema *JsonEntity
 	if instanceEntity.IsSchema {
-		// Casting a schema itself
-		fromSchema = instanceEntity
-		fromSchemaID = instanceEntity.GtsID.ID
+		// Not allowed to cast directly from a schema
+		return nil, &StoreGtsCastFromSchemaNotAllowedError{FromID: instanceID}
 	} else {
 		// Casting an instance - need to find its schema
 		fromSchemaID = instanceEntity.SchemaID
 		if fromSchemaID == "" {
-			return nil, fmt.Errorf("instance has no schema ID: %s", instanceID)
+			return nil, &StoreGtsSchemaForInstanceNotFoundError{EntityID: instanceID}
 		}
 		fromSchema = s.Get(fromSchemaID)
 		if fromSchema == nil {
-			return nil, fmt.Errorf("source schema not found: %s", fromSchemaID)
+			return nil, &StoreGtsSchemaNotFoundError{EntityID: fromSchemaID}
 		}
 	}
 

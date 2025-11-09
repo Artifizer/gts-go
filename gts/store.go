@@ -36,6 +36,15 @@ func (e *StoreGtsSchemaForInstanceNotFoundError) Error() string {
 	return fmt.Sprintf("Can't determine JSON schema ID for instance with GTS ID '%s'", e.EntityID)
 }
 
+// StoreGtsCastFromSchemaNotAllowedError is returned when attempting to cast from a schema ID
+type StoreGtsCastFromSchemaNotAllowedError struct {
+	FromID string
+}
+
+func (e *StoreGtsCastFromSchemaNotAllowedError) Error() string {
+	return fmt.Sprintf("Cannot cast from schema ID '%s'. The from_id must be an instance (not ending with '~').", e.FromID)
+}
+
 // GtsStore manages a collection of JSON entities and schemas
 type GtsStore struct {
 	byID   map[string]*JsonEntity

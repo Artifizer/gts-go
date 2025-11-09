@@ -8,26 +8,26 @@ A minimal, idiomatic Go library for working with **GTS** ([Global Type System](h
 
 Featureset:
 
-- [ ] **OP#1 - ID Validation**: Verify identifier syntax using regex patterns
-- [ ] **OP#2 - ID Extraction**: Fetch identifiers from JSON objects or JSON Schema documents
-- [ ] **OP#3 - ID Parsing**: Decompose identifiers into constituent parts (vendor, package, namespace, type, version, etc.)
-- [ ] **OP#4 - ID Pattern Matching**: Match identifiers against patterns containing wildcards
-- [ ] **OP#5 - ID to UUID Mapping**: Generate deterministic UUIDs from GTS identifiers
-- [ ] **OP#6 - Schema Validation**: Validate object instances against their corresponding schemas
-- [ ] **OP#7 - Relationship Resolution**: Load all schemas and instances, resolve inter-dependencies, and detect broken references
-- [ ] **OP#8 - Compatibility Checking**: Verify that schemas with different MINOR versions are compatible
-- [ ] **OP#8.1 - Backward compatibility checking**
-- [ ] **OP#8.2 - Forward compatibility checking**
-- [ ] **OP#8.3 - Full compatibility checking**
-- [ ] **OP#9 - Version Casting**: Transform instances between compatible MINOR versions
-- [ ] **OP#10 - Query Execution**: Filter identifier collections using the GTS query language
-- [ ] **OP#11 - Attribute Access**: Retrieve property values and metadata using the attribute selector (`@`)
+- [x] **OP#1 - ID Validation**: Verify identifier syntax using regex patterns
+- [x] **OP#2 - ID Extraction**: Fetch identifiers from JSON objects or JSON Schema documents
+- [x] **OP#3 - ID Parsing**: Decompose identifiers into constituent parts (vendor, package, namespace, type, version, etc.)
+- [x] **OP#4 - ID Pattern Matching**: Match identifiers against patterns containing wildcards
+- [x] **OP#5 - ID to UUID Mapping**: Generate deterministic UUIDs from GTS identifiers
+- [x] **OP#6 - Schema Validation**: Validate object instances against their corresponding schemas
+- [x] **OP#7 - Relationship Resolution**: Load all schemas and instances, resolve inter-dependencies, and detect broken references
+- [x] **OP#8 - Compatibility Checking**: Verify that schemas with different MINOR versions are compatible
+- [x] **OP#8.1 - Backward compatibility checking**
+- [x] **OP#8.2 - Forward compatibility checking**
+- [x] **OP#8.3 - Full compatibility checking**
+- [x] **OP#9 - Version Casting**: Transform instances between compatible MINOR versions
+- [x] **OP#10 - Query Execution**: Filter identifier collections using the GTS query language
+- [x] **OP#11 - Attribute Access**: Retrieve property values and metadata using the attribute selector (`@`)
 
 TODO - need a file with Go code snippets for all Ops above
 
 Other features:
 
-- [ ] **Web server** - a non-production web-server with REST API for the operations processing and testing
+- [x] **Web server** - a non-production web-server with REST API for the operations processing and testing
 - [ ] **CLI** - command-line interface for all GTS operations
 - [ ] **UUID for instances** - to support UUID as ID in JSON instances
 - [ ] **TypeSpec support** - Add [typespec.io](https://typespec.io/) files (*.tsp) support
@@ -42,10 +42,117 @@ Technical Backlog:
 ## Installation
 
 ```bash
-# TODO
+go get github.com/GlobalTypeSystem/gts-go
 ```
 
 ## Usage
+
+### Library
+
+Import the GTS package in your Go code:
+
+```go
+import "github.com/GlobalTypeSystem/gts-go/gts"
+```
+
+#### OP#1 - ID Validation
+
+```go
+// Validate a GTS ID
+if gts.IsValidGtsID("gts.vendor.pkg.ns.type.v1~") {
+    fmt.Println("Valid GTS ID")
+}
+
+// Get detailed validation result
+result := gts.ValidateGtsID("gts.vendor.pkg.ns.type.v1~")
+if result.Valid {
+    fmt.Printf("Valid: %s\n", result.ID)
+} else {
+    fmt.Printf("Invalid: %s\n", result.Error)
+}
+```
+
+#### OP#2 - ID Extraction
+
+```go
+// Extract GTS ID from JSON content
+content := map[string]any{
+    "gtsId": "gts.vendor.pkg.ns.type.v1.0",
+    "name":  "My Entity",
+}
+
+result := gts.ExtractID(content, nil)
+fmt.Printf("ID: %s\n", result.ID)
+fmt.Printf("Schema ID: %s\n", result.SchemaID)
+```
+
+#### OP#3 - ID Parsing
+
+```go
+// Parse a GTS ID into segments
+result := gts.ParseGtsID("gts.vendor.pkg.ns.type.v1~")
+if result.OK {
+    for _, seg := range result.Segments {
+        fmt.Printf("Vendor: %s, Package: %s, Type: %s, Version: %d\n",
+            seg.Vendor, seg.Package, seg.Type, seg.VerMajor)
+    }
+}
+```
+
+#### OP#4 - Pattern Matching
+
+```go
+// Match GTS ID against a pattern
+result := gts.MatchIDPattern(
+    "gts.vendor.pkg.ns.type.v1.0",
+    "gts.vendor.pkg.*",
+)
+if result.Match {
+    fmt.Println("Pattern matched!")
+}
+```
+
+#### OP#5 - UUID Generation
+
+```go
+// Generate deterministic UUID from GTS ID
+result := gts.IDToUUID("gts.vendor.pkg.ns.type.v1~")
+fmt.Printf("UUID: %s\n", result.UUID)
+```
+
+#### Using the GTS Store
+
+```go
+// Create a new store
+store := gts.NewGtsStore(nil)
+
+// Register an entity
+entity := gts.NewJsonEntity(map[string]any{
+    "gtsId": "gts.vendor.pkg.ns.type.v1.0",
+    "name":  "My Entity",
+}, gts.DefaultGtsConfig())
+
+err := store.Register(entity)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Query entities
+result := store.Query("gts.vendor.pkg.*", 100)
+fmt.Printf("Found %d entities\n", result.Count)
+
+// Validate an instance
+validation := store.ValidateInstance("gts.vendor.pkg.ns.type.v1.0")
+if validation.OK {
+    fmt.Println("Instance is valid")
+}
+
+// Attribute access
+attr := store.GetAttribute("gts.vendor.pkg.ns.type.v1.0@name")
+if attr.Resolved {
+    fmt.Printf("Attribute value: %v\n", attr.Value)
+}
+```
 
 ### CLI
 

@@ -25,13 +25,14 @@ Featureset:
 
 TODO - need a file with Go code snippets for all Ops above
 
-Other features:
+Other GTS spec [Reference Implementation](https://github.com/globaltypesystem/gts-spec/blob/main/README.md#9-reference-implementation-recommendations) recommended features support:
 
-- [x] **Web server** - a non-production web-server with REST API for the operations processing and testing
 - [ ] **CLI** - command-line interface for all GTS operations
-- [ ] **UUID for instances** - to support UUID as ID in JSON instances
+- [x] **Web server** - a non-production web-server with REST API for the operations processing and testing
+- [ ] **x-gts-ref support** - to support special GTS entity reference annotation in schemas
 - [ ] **YAML support** - to support YAML files (*.yml, *.yaml) as input files
-- [ ] **TypeSpec support** - Add [typespec.io](https://typespec.io/) files (*.tsp) support
+- [ ] **TypeSpec support** - add [typespec.io](https://typespec.io/) files (*.tsp) support
+- [ ] **UUID for instances** - to support UUID as ID in JSON instances
 
 Technical Backlog:
 

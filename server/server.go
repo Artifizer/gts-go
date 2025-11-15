@@ -121,3 +121,119 @@ func (s *Server) getQueryParamInt(r *http.Request, key string, defaultValue int)
 	}
 	return intVal
 }
+
+// GetOpenAPISpec returns a basic OpenAPI specification for the server
+func (s *Server) GetOpenAPISpec() map[string]any {
+	return map[string]any{
+		"openapi": "3.0.0",
+		"info": map[string]any{
+			"title":       "GTS Server",
+			"version":     "0.1.0",
+			"description": "GTS (Global Type System) HTTP API",
+		},
+		"servers": []map[string]any{
+			{
+				"url":         fmt.Sprintf("http://%s:%d", s.host, s.port),
+				"description": "GTS Server",
+			},
+		},
+		"paths": map[string]any{
+			"/entities": map[string]any{
+				"get": map[string]any{
+					"summary":     "Get all entities in the registry",
+					"operationId": "getEntities",
+					"parameters": []map[string]any{
+						{
+							"name":        "limit",
+							"in":          "query",
+							"description": "Maximum number of entities to return",
+							"schema":      map[string]any{"type": "integer", "default": 100},
+						},
+					},
+				},
+				"post": map[string]any{
+					"summary":     "Register a single entity (object or schema)",
+					"operationId": "addEntity",
+				},
+			},
+			"/validate-id": map[string]any{
+				"get": map[string]any{
+					"summary":     "Validate a GTS ID format",
+					"operationId": "validateID",
+					"parameters": []map[string]any{
+						{
+							"name":        "gts_id",
+							"in":          "query",
+							"description": "GTS ID to validate",
+							"required":    true,
+							"schema":      map[string]any{"type": "string"},
+						},
+					},
+				},
+			},
+			"/parse-id": map[string]any{
+				"get": map[string]any{
+					"summary":     "Parse a GTS ID into its components",
+					"operationId": "parseID",
+					"parameters": []map[string]any{
+						{
+							"name":        "gts_id",
+							"in":          "query",
+							"description": "GTS ID to parse",
+							"required":    true,
+							"schema":      map[string]any{"type": "string"},
+						},
+					},
+				},
+			},
+			"/match-id-pattern": map[string]any{
+				"get": map[string]any{
+					"summary":     "Match a GTS ID against a pattern",
+					"operationId": "matchIDPattern",
+				},
+			},
+			"/uuid": map[string]any{
+				"get": map[string]any{
+					"summary":     "Generate UUID from a GTS ID",
+					"operationId": "uuid",
+				},
+			},
+			"/validate-instance": map[string]any{
+				"post": map[string]any{
+					"summary":     "Validate an instance against its schema",
+					"operationId": "validateInstance",
+				},
+			},
+			"/resolve-relationships": map[string]any{
+				"get": map[string]any{
+					"summary":     "Resolve relationships for an entity",
+					"operationId": "resolveRelationships",
+				},
+			},
+			"/compatibility": map[string]any{
+				"get": map[string]any{
+					"summary":     "Check compatibility between two schemas",
+					"operationId": "compatibility",
+				},
+			},
+			"/cast": map[string]any{
+				"post": map[string]any{
+					"summary":     "Cast an instance to a target schema",
+					"operationId": "cast",
+				},
+			},
+			"/query": map[string]any{
+				"get": map[string]any{
+					"summary":     "Query entities using an expression",
+					"operationId": "query",
+				},
+			},
+			"/attr": map[string]any{
+				"get": map[string]any{
+					"summary":     "Get attribute value from a GTS entity",
+					"operationId": "attr",
+				},
+			},
+		},
+	}
+}

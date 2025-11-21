@@ -175,59 +175,86 @@ go build -o gts ./cmd/gts
 
 ```bash
 # Show help
-gts -h
+gts
+
+# Show version
+gts version
+
+# Command-specific help
+gts <command> -h
 
 # Basic operations (no file loading required)
 
 # OP#1 - Validate a GTS ID
-gts validate-id --gts-id "gts.vendor.pkg.ns.type.v1~"
+gts validate-id -id gts.vendor.pkg.ns.type.v1~
 
 # OP#2 - Parse a GTS ID into components
-gts parse-id --gts-id "gts.vendor.pkg.ns.type.v1.0"
+gts parse-id -id gts.vendor.pkg.ns.type.v1.0
 
 # OP#3 - Match ID against pattern
-gts match-id-pattern --pattern "gts.vendor.pkg.*" --candidate "gts.vendor.pkg.ns.type.v1.0"
+gts match-id -pattern "gts.vendor.pkg.*" -candidate gts.vendor.pkg.ns.type.v1.0
 
 # OP#4 - Generate UUID from GTS ID
-gts uuid --gts-id "gts.vendor.pkg.ns.type.v1~"
+gts uuid -id gts.vendor.pkg.ns.type.v1~
 
-# Operations that require loading files (use --path flag)
+# Operations that require loading files (use -path flag)
 
 # OP#5 - Validate instance against schema
-gts --path ./examples validate-instance --gts-id "gts.vendor.pkg.ns.type.v1.0"
+gts -path ./examples validate -id gts.vendor.pkg.ns.type.v1.0
 
 # OP#6 - Resolve relationships
-gts --path ./examples resolve-relationships --gts-id "gts.vendor.pkg.ns.type.v1~"
+gts -path ./examples relationships -id gts.vendor.pkg.ns.type.v1~
 
 # OP#7 - Check schema compatibility
-gts --path ./examples compatibility \
-  --old-schema-id "gts.vendor.pkg.ns.type.v1~" \
-  --new-schema-id "gts.vendor.pkg.ns.type.v2~"
+gts -path ./examples compatibility \
+  -old gts.vendor.pkg.ns.type.v1~ \
+  -new gts.vendor.pkg.ns.type.v2~
 
 # OP#8 - Cast instance to different schema version
-gts --path ./examples cast \
-  --from-id "gts.vendor.pkg.ns.type.v1.0" \
-  --to-schema-id "gts.vendor.pkg.ns.type.v2~"
+gts -path ./examples cast \
+  -from gts.vendor.pkg.ns.type.v1.0 \
+  -to gts.vendor.pkg.ns.type.v2~
 
 # OP#9 - Query entities
-gts --path ./examples query --expr "gts.vendor.pkg.*" --limit 10
+gts -path ./examples query -expr "gts.vendor.pkg.*" -limit 10
 
 # OP#10 - Get attribute value
-gts --path ./examples attr --gts-with-path "gts.vendor.pkg.ns.type.v1.0@name"
+gts -path ./examples attr -path gts.vendor.pkg.ns.type.v1.0@name
 
 # List all entities
-gts --path ./examples list --limit 100
-
-# Global flags
-gts -v --path ./examples list        # Verbose output (-v or --verbose)
-gts --verbose 2 --path ./examples list  # Debug level logging
-gts --config ./gts.config.json --path ./examples list  # Custom config
+gts -path ./examples list -limit 100
 
 # Start HTTP server
-gts --path ./examples server --host 127.0.0.1 --port 8000
+gts -path ./examples server -host 127.0.0.1 -port 8000
 
 # Generate OpenAPI specification
-gts --path ./examples openapi-spec --out openapi.json
+gts openapi -out openapi.json
+```
+
+#### Global Flags
+
+```bash
+# Verbose logging
+gts -v -path ./examples list
+
+# Custom config file
+gts -config ./gts.config.json -path ./examples list
+```
+
+#### Environment Variables
+
+The CLI supports the following environment variables:
+
+- `GTS_PATH` - Default path to JSON and schema files
+- `GTS_CONFIG` - Default path to GTS config JSON file
+- `GTS_VERBOSE` - Default verbosity level (0, 1, or 2)
+
+Example:
+
+```bash
+export GTS_PATH=./examples
+export GTS_VERBOSE=1
+gts list
 ```
 
 #### Multiple Paths
@@ -235,7 +262,7 @@ gts --path ./examples openapi-spec --out openapi.json
 You can load entities from multiple directories by separating paths with commas:
 
 ```bash
-gts --path ./schemas,./instances list
+gts -path ./schemas,./instances list
 ```
 
 ### Library

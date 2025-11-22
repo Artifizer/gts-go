@@ -28,7 +28,7 @@ TODO - need a file with Go code snippets for all Ops above
 Other GTS spec [Reference Implementation](https://github.com/globaltypesystem/gts-spec/blob/main/README.md#9-reference-implementation-recommendations) recommended features support:
 
 - [ ] **In-memory entities registry** - simple GTS entities registry with optional GTS references validation on entity registration
-- [ ] **CLI** - command-line interface for all GTS operations
+- [x] **CLI** - command-line interface for all GTS operations
 - [x] **Web server** - a non-production web-server with REST API for the operations processing and testing
 - [ ] **x-gts-ref support** - to support special GTS entity reference annotation in schemas
 - [ ] **YAML support** - to support YAML files (*.yml, *.yaml) as input files
@@ -159,34 +159,136 @@ if attr.Resolved {
 
 ### CLI
 
+The CLI provides command-line access to all GTS operations.
+
+#### Installation
+
 ```bash
-# TODO
+# Install the CLI tool
+go install github.com/GlobalTypeSystem/gts-go/cmd/gts@latest
+
+# Or build locally
+go build -o gts ./cmd/gts
+```
+
+#### Usage
+
+```bash
+# Show help
+gts
+
+# Show version
+gts version
+
+# Command-specific help
+gts <command> -h
+
+# Basic operations (no file loading required)
+
+# OP#1 - Validate a GTS ID
+gts validate-id -id gts.vendor.pkg.ns.type.v1~
+
+# OP#2 - Parse a GTS ID into components
+gts parse-id -id gts.vendor.pkg.ns.type.v1.0
+
+# OP#3 - Match ID against pattern
+gts match-id -pattern "gts.vendor.pkg.*" -candidate gts.vendor.pkg.ns.type.v1.0
+
+# OP#4 - Generate UUID from GTS ID
+gts uuid -id gts.vendor.pkg.ns.type.v1~
+
+# Operations that require loading files (use -path flag)
+
+# OP#5 - Validate instance against schema
+gts -path ./examples validate -id gts.vendor.pkg.ns.type.v1.0
+
+# OP#6 - Resolve relationships
+gts -path ./examples relationships -id gts.vendor.pkg.ns.type.v1~
+
+# OP#7 - Check schema compatibility
+gts -path ./examples compatibility \
+  -old gts.vendor.pkg.ns.type.v1~ \
+  -new gts.vendor.pkg.ns.type.v2~
+
+# OP#8 - Cast instance to different schema version
+gts -path ./examples cast \
+  -from gts.vendor.pkg.ns.type.v1.0 \
+  -to gts.vendor.pkg.ns.type.v2~
+
+# OP#9 - Query entities
+gts -path ./examples query -expr "gts.vendor.pkg.*" -limit 10
+
+# OP#10 - Get attribute value
+gts -path ./examples attr -path gts.vendor.pkg.ns.type.v1.0@name
+
+# List all entities
+gts -path ./examples list -limit 100
+
+# Start HTTP server
+gts -path ./examples server -host 127.0.0.1 -port 8000
+
+# Generate OpenAPI specification
+gts openapi -out openapi.json
+```
+
+#### Global Flags
+
+```bash
+# Verbose logging
+gts -v -path ./examples list
+
+# Custom config file
+gts -config ./gts.config.json -path ./examples list
+```
+
+#### Environment Variables
+
+The CLI supports the following environment variables:
+
+- `GTS_PATH` - Default path to JSON and schema files
+- `GTS_CONFIG` - Default path to GTS config JSON file
+- `GTS_VERBOSE` - Default verbosity level (0, 1, or 2)
+
+Example:
+
+```bash
+export GTS_PATH=./examples
+export GTS_VERBOSE=1
+gts list
+```
+
+#### Multiple Paths
+
+You can load entities from multiple directories by separating paths with commas:
+
+```bash
+gts -path ./schemas,./instances list
 ```
 
 ### Library
 
 TODO - See ...
 
-### Web server
+### Web Server
 
 The web server is a non-production web-server with REST API for the operations processing and testing. It implements reference API for gts-spec [tests](https://github.com/GlobalTypeSystem/gts-spec/tree/main/tests)
 
-
 ```bash
-# start the web server, default location is http://127.0.0.1:8000
-...
+# Start the web server (default: http://127.0.0.1:8000)
+gts --path ./examples server
 
-# start the web server on different port
-...
+# Start on a different port
+gts --path ./examples server --host 127.0.0.1 --port 8001
 
-# pre-populate server with the JSON instancens and schemas from the gts-spec tests
-...
+# Pre-populate server with JSON instances and schemas from the gts-spec tests
+# The server will automatically load all entities from the specified path
+gts --path /path/to/gts-spec/tests/entities server
 
-# Generate the OpenAPI schema
-...
+# View server logs
+gts -v --path ./examples server
 
-# See the schema
-...
+# Alternative: use the dedicated server binary
+go run ./cmd/gts-server -host 127.0.0.1 -port 8000 -verbose 1
 ```
 
 ### Testing

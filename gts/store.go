@@ -299,11 +299,69 @@ func (s *GtsStore) ValidateSchema(gtsID string) error {
 		return fmt.Errorf("schema content is nil")
 	}
 
+	// Validate x-gts-ref constraints in the schema
+	xGtsRefValidator := NewXGtsRefValidator(s)
+	xGtsRefErrors := xGtsRefValidator.ValidateSchema(entity.Content, "", nil)
+	if len(xGtsRefErrors) > 0 {
+		var errorMsgs []string
+		for _, err := range xGtsRefErrors {
+			errorMsgs = append(errorMsgs, err.Error())
+		}
+		return fmt.Errorf("x-gts-ref validation failed: %s", strings.Join(errorMsgs, "; "))
+	}
+
 	// Validate GTS references in the schema
 	if err := s.validateEntityGtsReferences(entity); err != nil {
 		return fmt.Errorf("schema GTS reference validation failed: %w", err)
 	}
 
 	log.Printf("Schema %s passed validation", gtsID)
+	return nil
+}
+
+// ValidateInstanceWithXGtsRef validates an instance against its schema including x-gts-ref constraints
+func (s *GtsStore) ValidateInstanceWithXGtsRef(instanceID string) error {
+	instance := s.Get(instanceID)
+	if instance == nil {
+		return &StoreGtsObjectNotFoundError{EntityID: instanceID}
+	}
+
+	if instance.IsSchema {
+		return fmt.Errorf("entity '%s' is a schema, not an instance", instanceID)
+	}
+
+	// Get the schema for this instance
+	if instance.SchemaID == "" {
+		return &StoreGtsSchemaForInstanceNotFoundError{EntityID: instanceID}
+	}
+
+	schema := s.Get(instance.SchemaID)
+	if schema == nil {
+		return &StoreGtsSchemaNotFoundError{EntityID: instance.SchemaID}
+	}
+
+	if !schema.IsSchema {
+		return fmt.Errorf("schema entity '%s' is not marked as schema", instance.SchemaID)
+	}
+
+	log.Printf("Validating instance %s against schema %s", instanceID, instance.SchemaID)
+
+	// Validate x-gts-ref constraints
+	xGtsRefValidator := NewXGtsRefValidator(s)
+	xGtsRefErrors := xGtsRefValidator.ValidateInstance(instance.Content, schema.Content, "")
+	if len(xGtsRefErrors) > 0 {
+		var errorMsgs []string
+		for _, err := range xGtsRefErrors {
+			errorMsgs = append(errorMsgs, err.Error())
+		}
+		return fmt.Errorf("x-gts-ref validation failed: %s", strings.Join(errorMsgs, "; "))
+	}
+
+	// Validate GTS references in the instance
+	if err := s.validateEntityGtsReferences(instance); err != nil {
+		return fmt.Errorf("instance GTS reference validation failed: %w", err)
+	}
+
+	log.Printf("Instance %s passed validation", instanceID)
 	return nil
 }

@@ -107,7 +107,10 @@ func isJSONSchema(content map[string]any) bool {
 
 	schemaURL, ok := content["$schema"]
 	if !ok {
-		return false
+		schemaURL, ok = content["$$schema"]
+		if !ok {
+			return false
+		}
 	}
 
 	schemaStr, ok := schemaURL.(string)

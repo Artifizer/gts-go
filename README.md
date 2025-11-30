@@ -30,7 +30,7 @@ Other GTS spec [Reference Implementation](https://github.com/globaltypesystem/gt
 - [x] **In-memory entities registry** - simple GTS entities registry with optional GTS references validation on entity registration
 - [x] **CLI** - command-line interface for all GTS operations
 - [x] **Web server** - a non-production web-server with REST API for the operations processing and testing
-- [ ] **x-gts-ref support** - to support special GTS entity reference annotation in schemas
+- [x] **x-gts-ref support** - to support special GTS entity reference annotation in schemas
 - [ ] **YAML support** - to support YAML files (*.yml, *.yaml) as input files
 - [ ] **TypeSpec support** - add [typespec.io](https://typespec.io/) files (*.tsp) support
 - [ ] **UUID for instances** - to support UUID as ID in JSON instances

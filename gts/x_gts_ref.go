@@ -46,7 +46,7 @@ func (v *XGtsRefValidator) ValidateSchema(schema map[string]interface{}, schemaP
 	if rootSchema == nil {
 		rootSchema = schema
 	}
-	
+
 	var errors []*XGtsRefValidationError
 	v.visitSchema(schema, schemaPath, rootSchema, &errors)
 	return errors
@@ -121,12 +121,12 @@ func (v *XGtsRefValidator) visitSchema(schema map[string]interface{}, path strin
 		if key == "x-gts-ref" {
 			continue
 		}
-		
+
 		nestedPath := key
 		if path != "" {
 			nestedPath = path + "/" + key
 		}
-		
+
 		switch val := value.(type) {
 		case map[string]interface{}:
 			v.visitSchema(val, nestedPath, rootSchema, errors)
@@ -177,7 +177,7 @@ func (v *XGtsRefValidator) validateRefValue(value string, refPattern interface{}
 			}
 			resolved = furtherResolved
 		}
-		
+
 		if !strings.HasPrefix(resolved, "gts.") {
 			return &XGtsRefValidationError{
 				FieldPath:  fieldPath,

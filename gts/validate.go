@@ -20,9 +20,12 @@ type gtsURLLoader struct {
 // Load resolves GTS ID references to their schema content
 // This matches Python's resolve_gts_ref handler
 func (l *gtsURLLoader) Load(url string) (any, error) {
+	// Strip the gts:// URI prefix if present (JSON Schema $id may have it)
+	normalizedURL := strings.TrimPrefix(url, GtsURIPrefix)
+
 	// Check if this is a GTS ID reference
-	if IsValidGtsID(url) {
-		entity := l.store.Get(url)
+	if IsValidGtsID(normalizedURL) {
+		entity := l.store.Get(normalizedURL)
 		if entity == nil {
 			return nil, fmt.Errorf("unresolvable GTS reference: %s", url)
 		}
@@ -166,14 +169,21 @@ func (s *GtsStore) validateWithSchema(instance map[string]any, schema map[string
 		return fmt.Errorf("schema must have a valid $id field")
 	}
 
-	// Add the main schema to the compiler (use normalized schema)
-	if err := compiler.AddResource(schemaID, normalizedSchema); err != nil {
+	// Normalize schema ID by stripping gts:// prefix if present
+	normalizedSchemaID := strings.TrimPrefix(schemaID, GtsURIPrefix)
+
+	// Update the $id in the normalized schema to use the normalized ID
+	normalizedSchema["$id"] = normalizedSchemaID
+
+	// Add the main schema to the compiler (use normalized schema with normalized ID)
+	if err := compiler.AddResource(normalizedSchemaID, normalizedSchema); err != nil {
 		return fmt.Errorf("add schema resource: %v", err)
 	}
 
 	// Pre-load all schemas from the store (matches Python's store dict pre-population)
+	// Note: Store IDs are already normalized (without gts:// prefix)
 	for id, entity := range s.byID {
-		if entity.IsSchema && id != schemaID {
+		if entity.IsSchema && id != normalizedSchemaID {
 			if err := compiler.AddResource(id, entity.Content); err != nil {
 				// Ignore errors - gtsURLLoader will handle dynamic resolution
 				continue
@@ -181,8 +191,8 @@ func (s *GtsStore) validateWithSchema(instance map[string]any, schema map[string
 		}
 	}
 
-	// Compile the schema
-	compiledSchema, err := compiler.Compile(schemaID)
+	// Compile the schema using the normalized ID
+	compiledSchema, err := compiler.Compile(normalizedSchemaID)
 	if err != nil {
 		return fmt.Errorf("compile schema: %v", err)
 	}

@@ -268,3 +268,76 @@ func TestExtractID_SchemaIDFallback(t *testing.T) {
 		t.Errorf("Expected SchemaID, got %q", result.SchemaID)
 	}
 }
+
+// =============================================================================
+// Tests for URI prefix "gts://" in JSON Schema $id field
+// The gts:// prefix is used in JSON Schema for URI compatibility.
+// GtsEntity strips it when parsing so the GtsID works with normal "gts." format.
+// =============================================================================
+
+// TestExtractID_GtsURIPrefix_InDollarIdField tests that gts:// prefix is stripped from $id field
+func TestExtractID_GtsURIPrefix_InDollarIdField(t *testing.T) {
+	content := map[string]any{
+		"$id":     "gts://gts.vendor.package.namespace.type.v1.0~",
+		"$schema": "http://json-schema.org/draft-07/schema#",
+		"type":    "object",
+	}
+
+	result := ExtractID(content, nil)
+
+	// The gts:// prefix should be stripped from the $id field
+	if result.ID != "gts.vendor.package.namespace.type.v1.0~" {
+		t.Errorf("Expected ID without gts:// prefix %q, got %q", "gts.vendor.package.namespace.type.v1.0~", result.ID)
+	}
+	if !result.IsSchema {
+		t.Errorf("Expected IsSchema to be true")
+	}
+}
+
+// TestExtractID_GtsURIPrefix_NotStrippedFromOtherFields tests that gts:// prefix is NOT stripped from non-$id fields
+func TestExtractID_GtsURIPrefix_NotStrippedFromOtherFields(t *testing.T) {
+	// gts:// prefix in non-$id field should NOT be stripped (and results in invalid GTS ID)
+	content := map[string]any{
+		"id": "gts://gts.vendor.package.namespace.type.v1.0",
+	}
+
+	result := ExtractID(content, nil)
+
+	// The "id" field is not $id, so the gts:// prefix is NOT stripped
+	// The value "gts://gts.vendor..." is not a valid GTS ID
+	if result.ID != "" {
+		t.Errorf("Expected empty ID (gts:// prefix in 'id' field should not be stripped), got %q", result.ID)
+	}
+}
+
+// TestExtractID_GtsColonPrefix_NotValid tests that gts: (without //) is NOT a valid prefix
+func TestExtractID_GtsColonPrefix_NotValid(t *testing.T) {
+	// "gts:" (without //) is NOT a valid prefix - only "gts://" is valid
+	content := map[string]any{
+		"$id":     "gts:gts.vendor.package.namespace.type.v1.0~",
+		"$schema": "http://json-schema.org/draft-07/schema#",
+	}
+
+	result := ExtractID(content, nil)
+
+	// With "gts:" prefix (not "gts://"), the ID is not stripped and won't be valid
+	// The entity should NOT have a valid GTS ID
+	if result.ID != "" {
+		t.Errorf("Expected empty ID (gts: prefix without // should not be stripped), got %q", result.ID)
+	}
+}
+
+// TestExtractID_GtsURIPrefix_WithoutPrefix tests that IDs without prefix still work
+func TestExtractID_GtsURIPrefix_WithoutPrefix(t *testing.T) {
+	// IDs without gts:// prefix should work as before
+	content := map[string]any{
+		"$id":     "gts.vendor.package.namespace.type.v1.0~",
+		"$schema": "http://json-schema.org/draft-07/schema#",
+	}
+
+	result := ExtractID(content, nil)
+
+	if result.ID != "gts.vendor.package.namespace.type.v1.0~" {
+		t.Errorf("Expected ID %q, got %q", "gts.vendor.package.namespace.type.v1.0~", result.ID)
+	}
+}

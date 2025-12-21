@@ -182,6 +182,7 @@ func isJSONSchema(content map[string]any) bool {
 }
 
 // getFieldValue retrieves a string value from content field
+// For the "$id" field (JSON Schema), it strips the "gts://" URI prefix if present
 func (e *JsonEntity) getFieldValue(field string) string {
 	if e.Content == nil {
 		return ""
@@ -197,7 +198,18 @@ func (e *JsonEntity) getFieldValue(field string) string {
 		return ""
 	}
 
-	return strings.TrimSpace(strVal)
+	trimmed := strings.TrimSpace(strVal)
+	if trimmed == "" {
+		return ""
+	}
+
+	// Strip the "gts://" URI prefix ONLY for $id field (JSON Schema compatibility)
+	// The gts:// prefix is ONLY valid in the $id field of JSON Schema
+	if field == "$id" {
+		trimmed = strings.TrimPrefix(trimmed, GtsURIPrefix)
+	}
+
+	return trimmed
 }
 
 // firstNonEmptyField finds the first non-empty field, preferring valid GTS IDs

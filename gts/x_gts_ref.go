@@ -322,7 +322,17 @@ func (v *XGtsRefValidator) validateGtsPattern(value, pattern, fieldPath string) 
 	return nil
 }
 
+// stripGtsURIPrefix removes the "gts://" prefix from a value if present.
+// This is used for /$id relative references where the schema's $id field
+// contains a full GTS URI (e.g., "gts://gts.x.example._.user.v1~") but the
+// instance value should match without the prefix (e.g., "gts.x.example._.user.v1~").
+func stripGtsURIPrefix(value string) string {
+	return strings.TrimPrefix(value, GtsURIPrefix)
+}
+
 // resolvePointer resolves a JSON Pointer in the schema
+// Note: For /$id references, the gts:// prefix is stripped from the value
+// as per GTS specification (relative self-reference should match the $id without the prefix).
 func (v *XGtsRefValidator) resolvePointer(schema map[string]interface{}, pointer string) string {
 	path := strings.TrimPrefix(pointer, "/")
 	if path == "" {
@@ -343,9 +353,9 @@ func (v *XGtsRefValidator) resolvePointer(schema map[string]interface{}, pointer
 		}
 	}
 
-	// If current is a string, return it
+	// If current is a string, return it (stripping gts:// prefix if present)
 	if str, ok := current.(string); ok {
-		return str
+		return stripGtsURIPrefix(str)
 	}
 
 	// If current is a dict with x-gts-ref, resolve it

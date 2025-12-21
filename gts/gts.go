@@ -17,6 +17,10 @@ import (
 const (
 	// GtsPrefix is the required prefix for all GTS identifiers
 	GtsPrefix = "gts."
+	// GtsURIPrefix is the URI-compatible prefix for GTS identifiers in JSON Schema $id field
+	// (e.g., "gts://gts.x.y.z..."). This is ONLY used for JSON Schema serialization/deserialization,
+	// not for GTS ID parsing.
+	GtsURIPrefix = "gts://"
 	// MaxIDLength is the maximum allowed length for a GTS identifier
 	MaxIDLength = 1024
 )

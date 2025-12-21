@@ -365,7 +365,7 @@ func TestXGtsRefValidator_ResolvePointer(t *testing.T) {
 	validator := NewXGtsRefValidator(nil)
 
 	schema := map[string]interface{}{
-		"$id": "gts.x.test.ns.module.v1~",
+		"$id": "gts://gts.x.test.ns.module.v1~",
 		"properties": map[string]interface{}{
 			"type": map[string]interface{}{
 				"const": "gts.x.test.ns.type.v1~",
@@ -597,4 +597,187 @@ func TestGtsStore_ValidateInstanceWithXGtsRef(t *testing.T) {
 // Helper function to check if a string contains a substring
 func containsSubstring(s, substr string) bool {
 	return strings.Contains(s, substr)
+}
+
+// =============================================================================
+// Tests for URI prefix "gts://" in JSON Schema $id field and /$id references
+// =============================================================================
+
+// TestXGtsRefValidator_ResolvePointer_GtsURIPrefix tests that gts:// prefix is stripped when resolving /$id
+func TestXGtsRefValidator_ResolvePointer_GtsURIPrefix(t *testing.T) {
+	validator := NewXGtsRefValidator(nil)
+
+	schema := map[string]interface{}{
+		"$id":  "gts://gts.x.test.ns.module.v1~",
+		"type": "object",
+		"properties": map[string]interface{}{
+			"id": map[string]interface{}{
+				"type":      "string",
+				"x-gts-ref": "/$id",
+			},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		pointer  string
+		expected string
+	}{
+		{
+			name:     "resolve $id with gts:// prefix - prefix should be stripped",
+			pointer:  "/$id",
+			expected: "gts.x.test.ns.module.v1~",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := validator.resolvePointer(schema, tt.pointer)
+			if result != tt.expected {
+				t.Errorf("Expected '%s', got '%s'", tt.expected, result)
+			}
+		})
+	}
+}
+
+// TestXGtsRefValidator_ValidateInstance_DollarIdWithGtsURIPrefix tests instance validation when schema $id has gts:// prefix
+func TestXGtsRefValidator_ValidateInstance_DollarIdWithGtsURIPrefix(t *testing.T) {
+	store := NewGtsStore(nil)
+	validator := NewXGtsRefValidator(store)
+
+	// Schema has $id with gts:// prefix
+	schema := map[string]interface{}{
+		"$id":     "gts://gts.x.test.ns.entity.v1~",
+		"$schema": "http://json-schema.org/draft-07/schema#",
+		"type":    "object",
+		"properties": map[string]interface{}{
+			"id": map[string]interface{}{
+				"type":      "string",
+				"x-gts-ref": "/$id",
+			},
+		},
+	}
+
+	// Register the schema entity
+	schemaEntity := NewJsonEntity(schema, DefaultGtsConfig())
+	store.Register(schemaEntity)
+
+	// Register the instance entity for store validation
+	validInstance := map[string]interface{}{
+		"id": "gts.x.test.ns.entity.v1~x.vendor._.instance.v1",
+	}
+	instanceEntity := NewJsonEntity(validInstance, DefaultGtsConfig())
+	store.Register(instanceEntity)
+
+	tests := []struct {
+		name          string
+		instance      map[string]interface{}
+		shouldFail    bool
+		errorContains string
+	}{
+		{
+			name: "valid instance - value WITHOUT gts:// prefix should match",
+			instance: map[string]interface{}{
+				"id": "gts.x.test.ns.entity.v1~x.vendor._.instance.v1",
+			},
+			shouldFail: false,
+		},
+		{
+			name: "invalid instance - value WITH gts:// prefix should be rejected",
+			instance: map[string]interface{}{
+				"id": "gts://gts.x.test.ns.entity.v1~",
+			},
+			shouldFail:    true,
+			errorContains: "not a valid GTS identifier",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errors := validator.ValidateInstance(tt.instance, schema, "")
+
+			if tt.shouldFail {
+				if len(errors) == 0 {
+					t.Errorf("Expected validation to fail, but no errors were returned")
+				} else if tt.errorContains != "" {
+					found := false
+					for _, err := range errors {
+						if containsSubstring(err.Error(), tt.errorContains) {
+							found = true
+							break
+						}
+					}
+					if !found {
+						t.Errorf("Expected error containing '%s', got errors: %v", tt.errorContains, errors)
+					}
+				}
+			} else {
+				if len(errors) > 0 {
+					t.Errorf("Expected validation to pass, but got errors: %v", errors)
+				}
+			}
+		})
+	}
+}
+
+// TestXGtsRefValidator_ValidateSchema_DollarIdWithGtsURIPrefix tests schema validation when $id has gts:// prefix
+func TestXGtsRefValidator_ValidateSchema_DollarIdWithGtsURIPrefix(t *testing.T) {
+	validator := NewXGtsRefValidator(nil)
+
+	// Schema with $id containing gts:// prefix and self-reference via /$id
+	schema := map[string]interface{}{
+		"$id":     "gts://gts.x.test.ns.entity.v1~",
+		"$schema": "http://json-schema.org/draft-07/schema#",
+		"type":    "object",
+		"properties": map[string]interface{}{
+			"type": map[string]interface{}{
+				"type":      "string",
+				"x-gts-ref": "/$id",
+			},
+		},
+	}
+
+	errors := validator.ValidateSchema(schema, "", nil)
+	if len(errors) > 0 {
+		t.Errorf("Expected schema validation to pass (gts:// prefix should be stripped), but got errors: %v", errors)
+	}
+}
+
+// TestStripGtsURIPrefix tests the stripGtsURIPrefix helper function
+func TestStripGtsURIPrefix(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "with gts:// prefix",
+			input:    "gts://gts.x.test.ns.entity.v1~",
+			expected: "gts.x.test.ns.entity.v1~",
+		},
+		{
+			name:     "without prefix (passthrough)",
+			input:    "gts.x.test.ns.entity.v1~",
+			expected: "gts.x.test.ns.entity.v1~",
+		},
+		{
+			name:     "with gts: prefix (NOT stripped - only gts:// is valid)",
+			input:    "gts:gts.x.test.ns.entity.v1~",
+			expected: "gts:gts.x.test.ns.entity.v1~",
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := stripGtsURIPrefix(tt.input)
+			if result != tt.expected {
+				t.Errorf("Expected '%s', got '%s'", tt.expected, result)
+			}
+		})
+	}
 }

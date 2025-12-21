@@ -1,0 +1,221 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+  pull_request:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+
+# Cancel previous runs for the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: '1.23'
+
+jobs:
+  test:
+    name: Test Suite (${{ matrix.os }}, go=${{ env.GO_VERSION }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+
+    steps:
+      - name: Force LF in working tree (w/a for Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          clean: 'true'
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Show Go version
+        run: go version
+
+      # Formatting check (fast fail for style issues)
+      - name: go fmt (check)
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "The following files are not formatted:"
+            gofmt -l .
+            exit 1
+          fi
+        shell: bash
+
+      # Vet (static analysis)
+      - name: go vet
+        run: go vet ./...
+
+      # Build
+      - name: go build
+        run: go build ./...
+
+      # Unit tests
+      - name: go test
+        run: go test -v -race ./...
+
+  lint:
+    name: Lint (golangci-lint on Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      # Note: golangci-lint may not support the latest Go versions immediately
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+        continue-on-error: true
+
+  security:
+    name: Security (govulncheck on Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      # Run vulnerability checks but do not fail CI.
+      - name: govulncheck
+        run: govulncheck ./...
+        continue-on-error: true
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      # Generate coverage report
+      - name: Run tests with coverage
+        run: go test -coverprofile=coverage.out -covermode=atomic ./...
+
+      # Upload to Codecov; do not fail CI if Codecov is down/misconfigured.
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.out
+          fail_ci_if_error: false
+          # token: ${{ secrets.CODECOV_TOKEN }}  # Uncomment if required for private repos
+
+  e2e:
+    name: E2E Tests (gts-spec)
+    runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: 1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build release binary
+        run: go build -o ./bin/gts ./cmd/gts
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pytest and dependencies
+        run: pip install pytest requests httprunner
+
+      - name: Run e2e tests
+        run: |
+          # Start server in background with logs
+          ./bin/gts server --port 8000 > .server.log 2>&1 &
+          SERVER_PID=$!
+          echo "Started GTS server with PID $SERVER_PID"
+
+          # Wait for server to be ready
+          echo "Waiting for GTS server to start..."
+          for i in $(seq 1 30); do
+            if ! kill -0 $SERVER_PID 2>/dev/null; then
+              echo "ERROR: Server process died unexpectedly"
+              echo "=== Server logs ==="
+              cat .server.log || true
+              exit 1
+            fi
+            if curl -sf http://127.0.0.1:8000/entities > /dev/null 2>&1; then
+              echo "GTS server is ready!"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "ERROR: GTS server failed to start within 30 seconds"
+              echo "=== Server logs ==="
+              cat .server.log || true
+              kill $SERVER_PID 2>/dev/null || true
+              exit 1
+            fi
+            echo "Attempt $i/30: Server not ready yet, waiting..."
+            sleep 1
+          done
+
+          # Run tests
+          pytest -p no:cacheprovider ./.gts-spec/tests -v
+          TEST_EXIT=$?
+
+          # Stop server
+          echo "Stopping GTS server..."
+          kill $SERVER_PID 2>/dev/null || true
+          wait $SERVER_PID 2>/dev/null || true
+
+          exit $TEST_EXIT

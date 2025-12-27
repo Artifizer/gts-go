@@ -12,14 +12,14 @@ import (
 // TestGtsID_Valid tests valid GTS identifiers
 func TestGtsID_Valid(t *testing.T) {
 	validIDs := []string{
-		"gts.vendor.package.namespace.type.v0",
-		"gts.vendor.package.namespace.type.v0.0",
-		"gts.vendor.package.namespace.type.v1",
-		"gts.vendor.package.namespace.type.v1.5",
-		"gts.vendor_name.package_name.namespace_name.type_name.v0",
+		"gts.vendor.package.namespace.type.v0~a.b.c.d.v1",
+		"gts.vendor.package.namespace.type.v0.0~a.b.c.d.v1",
+		"gts.vendor.package.namespace.type.v1~",
+		"gts.vendor.package.namespace.type.v1.5~",
+		"gts.vendor_name.package_name.namespace_name.type_name.v0~a.b.c.d.v1",
 		"gts.vendor.package.namespace.type.v0~",
 		"gts.vendor.package.namespace.type.v0.0~",
-		"gts.vendor.package.namespace.type.v10.20",
+		"gts.vendor.package.namespace.type.v10.20~a.b.c.d.v1",
 	}
 
 	for _, id := range validIDs {
@@ -41,8 +41,8 @@ func TestGtsID_IsValid(t *testing.T) {
 		id       string
 		expected bool
 	}{
-		{"gts.vendor.package.namespace.type.v0", true},
-		{"gts.vendor.package.namespace.type.v0.0", true},
+		{"gts.vendor.package.namespace.type.v0~a.b.c.d.v1", true},
+		{"gts.vendor.package.namespace.type.v0.0~a.b.c.d.v1", true},
 		{"invalid.prefix.package.namespace.type.v0", false},
 		{"GTS.vendor.package.namespace.type.v0", false},
 		{"gts.vendor.package.namespace", false},
@@ -198,8 +198,8 @@ func TestGtsID_IsType(t *testing.T) {
 	}{
 		{"gts.vendor.package.namespace.type.v0~", true},
 		{"gts.vendor.package.namespace.type.v0.0~", true},
-		{"gts.vendor.package.namespace.type.v0", false},
-		{"gts.vendor.package.namespace.type.v0.0", false},
+		{"gts.vendor.package.namespace.type.v0~a.b.c.d.v1", false},
+		{"gts.vendor.package.namespace.type.v0.0~a.b.c.d.v1", false},
 	}
 
 	for _, tt := range tests {

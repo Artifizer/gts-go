@@ -15,7 +15,7 @@ type MatchIDResult struct {
 	Candidate string `json:"candidate"`
 	Pattern   string `json:"pattern"`
 	Match     bool   `json:"match"`
-	Error     string `json:"error"`
+	Error     string `json:"error,omitempty"`
 }
 
 // InvalidWildcardError represents an error when a wildcard pattern is invalid
@@ -35,8 +35,18 @@ func (e *InvalidWildcardError) Error() string {
 // Returns a MatchIDResult with Match=true if the candidate matches the pattern,
 // or Match=false with an optional Error message on failure or mismatch
 func MatchIDPattern(candidate, pattern string) MatchIDResult {
-	// Parse candidate
-	candidateID, err := NewGtsID(candidate)
+	// Parse candidate - it can be either a regular GTS ID or a wildcard pattern
+	var candidateID *GtsID
+	var err error
+
+	if strings.Contains(candidate, "*") {
+		// Candidate contains wildcard, validate it as a wildcard pattern
+		candidateID, err = validateWildcard(candidate)
+	} else {
+		// Candidate is a regular GTS ID
+		candidateID, err = NewGtsID(candidate)
+	}
+
 	if err != nil {
 		return MatchIDResult{
 			Candidate: candidate,
@@ -99,8 +109,23 @@ func validateWildcard(pattern string) (*GtsID, error) {
 		}
 	}
 
-	// Try to parse as a GtsID
-	id, err := NewGtsID(p)
+	// For wildcard patterns, we need custom parsing that doesn't enforce single-segment prohibition
+	// Remove the wildcard token temporarily for validation
+	tempPattern := strings.ReplaceAll(p, ".*", "")
+	tempPattern = strings.ReplaceAll(tempPattern, "~*", "~")
+
+	// Try to parse the base pattern (without wildcard) using standard validation
+	// but skip single-segment instance check for wildcards
+	_, err := validateWildcardBase(tempPattern)
+	if err != nil {
+		return nil, &InvalidWildcardError{
+			Pattern: pattern,
+			Cause:   err.Error(),
+		}
+	}
+
+	// Now parse the full wildcard pattern with relaxed validation
+	id, err := parseWildcardGtsID(p)
 	if err != nil {
 		return nil, &InvalidWildcardError{
 			Pattern: pattern,
@@ -109,6 +134,93 @@ func validateWildcard(pattern string) (*GtsID, error) {
 	}
 
 	return id, nil
+}
+
+// validateWildcardBase validates the base pattern (without wildcards) with relaxed rules
+func validateWildcardBase(basePattern string) (*GtsID, error) {
+	if basePattern == "" {
+		return nil, fmt.Errorf("empty base pattern")
+	}
+
+	// Allow bare "gts" base for global wildcard patterns like "gts.*"
+	if basePattern == strings.TrimSuffix(GtsPrefix, ".") {
+		return nil, nil
+	}
+
+	// Basic prefix validation
+	if !strings.HasPrefix(basePattern, GtsPrefix) {
+		return nil, fmt.Errorf("does not start with '%s'", GtsPrefix)
+	}
+
+	// Length validation
+	if len(basePattern) > MaxIDLength {
+		return nil, fmt.Errorf("too long")
+	}
+
+	// Lowercase validation
+	if basePattern != strings.ToLower(basePattern) {
+		return nil, fmt.Errorf("must be lower case")
+	}
+
+	// No hyphens validation
+	if strings.Contains(basePattern, "-") {
+		return nil, fmt.Errorf("must not contain '-'")
+	}
+
+	// For wildcard base validation, we skip the single-segment instance prohibition
+	// since wildcards can match complete patterns
+	return nil, nil // We don't need to return a parsed ID, just validate
+}
+
+// parseWildcardGtsID parses a wildcard GTS ID with relaxed validation rules
+func parseWildcardGtsID(id string) (*GtsID, error) {
+	raw := strings.TrimSpace(id)
+
+	// Basic validation (same as NewGtsID but skip single-segment check)
+	if raw != strings.ToLower(raw) {
+		return nil, &InvalidGtsIDError{GtsID: id, Cause: "Must be lower case"}
+	}
+
+	if strings.Contains(raw, "-") {
+		return nil, &InvalidGtsIDError{GtsID: id, Cause: "Must not contain '-'"}
+	}
+
+	if !strings.HasPrefix(raw, GtsPrefix) {
+		return nil, &InvalidGtsIDError{GtsID: id, Cause: fmt.Sprintf("Does not start with '%s'", GtsPrefix)}
+	}
+
+	if len(raw) > MaxIDLength {
+		return nil, &InvalidGtsIDError{GtsID: id, Cause: "Too long"}
+	}
+
+	gtsID := &GtsID{
+		ID:       raw,
+		Segments: make([]*GtsIDSegment, 0),
+	}
+
+	// Split by ~ to get segments, preserving empties to detect trailing ~
+	remainder := raw[len(GtsPrefix):]
+	parts := splitPreservingTilde(remainder)
+
+	offset := len(GtsPrefix)
+	for i, part := range parts {
+		if part == "" {
+			return nil, &InvalidGtsIDError{GtsID: id, Cause: fmt.Sprintf("GTS segment #%d @ offset %d is empty", i+1, offset)}
+		}
+
+		segment, err := parseSegment(i+1, offset, part)
+		if err != nil {
+			return nil, err
+		}
+
+		gtsID.Segments = append(gtsID.Segments, segment)
+		offset += len(part)
+	}
+
+	// Skip single-segment instance prohibition for wildcard patterns
+	// Wildcards are allowed to match patterns that would otherwise be invalid
+
+	return gtsID, nil
 }
 
 // wildcardMatch performs the actual matching between candidate and pattern

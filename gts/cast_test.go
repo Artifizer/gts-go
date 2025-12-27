@@ -14,7 +14,7 @@ func TestCast_MinorVersionUpcast(t *testing.T) {
 
 	// Register base event schema
 	baseSchema := map[string]any{
-		"$id":      "gts.x.core.events.type.v1~",
+		"$id":      "gts://gts.x.core.events.type.v1~",
 		"$schema":  "http://json-schema.org/draft-07/schema#",
 		"type":     "object",
 		"required": []any{"id", "type", "tenantId", "occurredAt"},
@@ -110,6 +110,7 @@ func TestCast_MinorVersionUpcast(t *testing.T) {
 
 	// Register v1.0 instance
 	v10Instance := map[string]any{
+		"gtsId":      "gts.x.core.events.type.v1~x.commerce.orders.order_placed.v1.0~x.vendor._.inst.v1.0",
 		"type":       "gts.x.core.events.type.v1~x.commerce.orders.order_placed.v1.0~",
 		"id":         "af0e3c1b-8f1e-4a27-9a9b-b7b9b70c1f01",
 		"tenantId":   "11111111-2222-3333-4444-555555555555",
@@ -135,7 +136,7 @@ func TestCast_MinorVersionUpcast(t *testing.T) {
 
 	// Cast from v1.0 to v1.1
 	result, err := store.Cast(
-		"gts.x.core.events.type.v1~x.commerce.orders.order_placed.v1.0~",
+		"gts.x.core.events.type.v1~x.commerce.orders.order_placed.v1.0~x.vendor._.inst.v1.0",
 		"gts.x.core.events.type.v1~x.commerce.orders.order_placed.v1.1~",
 	)
 
@@ -265,6 +266,7 @@ func TestCast_MinorVersionDowncast(t *testing.T) {
 
 	// Register v1.1 instance
 	v11Instance := map[string]any{
+		"gtsId":      "gts.x.core.events.type.v1~x.test9.cast.event.v1.1~x.vendor._.inst.v1.0",
 		"type":       "gts.x.core.events.type.v1~x.test9.cast.event.v1.1~",
 		"id":         "8b2e3f45-6789-50bc-0123-bcdef234567",
 		"tenantId":   "22222222-3333-4444-5555-666666666666",
@@ -281,7 +283,7 @@ func TestCast_MinorVersionDowncast(t *testing.T) {
 
 	// Cast from v1.1 to v1.0 (downcast)
 	result, err := store.Cast(
-		"gts.x.core.events.type.v1~x.test9.cast.event.v1.1~",
+		"gts.x.core.events.type.v1~x.test9.cast.event.v1.1~x.vendor._.inst.v1.0",
 		"gts.x.core.events.type.v1~x.test9.cast.event.v1.0~",
 	)
 
@@ -373,9 +375,8 @@ func TestCast_NestedObjects(t *testing.T) {
 
 	// Register v1.0 instance
 	v10Instance := map[string]any{
-		"gtsId":   "gts.x.core.nested.type.v1.0",
-		"$schema": "gts.x.core.nested.type.v1.0~",
-		"id":      "test-123",
+		"gtsId": "gts.x.core.nested.type.v1.0~a.b.c.d.v1",
+		"id":    "test-123",
 		"details": map[string]any{
 			"name": "John",
 		},
@@ -386,7 +387,7 @@ func TestCast_NestedObjects(t *testing.T) {
 	}
 
 	// Cast from v1.0 to v1.1
-	result, err := store.Cast("gts.x.core.nested.type.v1.0", "gts.x.core.nested.type.v1.1~")
+	result, err := store.Cast("gts.x.core.nested.type.v1.0~a.b.c.d.v1", "gts.x.core.nested.type.v1.1~")
 
 	if err != nil {
 		t.Fatalf("Cast failed: %v", err)
@@ -478,8 +479,8 @@ func TestCast_ArrayOfObjects(t *testing.T) {
 
 	// Register v1.0 instance with array
 	v10Instance := map[string]any{
-		"gtsId":   "gts.x.core.array.type.v1.0",
-		"$schema": "gts.x.core.array.type.v1.0~",
+		"gtsId": "gts.x.core.array.type.v1.0~a.b.c.d.v1.0",
+		"type":  "gts.x.core.array.type.v1.0~",
 		"items": []any{
 			map[string]any{"id": "item1"},
 			map[string]any{"id": "item2"},
@@ -491,7 +492,7 @@ func TestCast_ArrayOfObjects(t *testing.T) {
 	}
 
 	// Cast from v1.0 to v1.1
-	result, err := store.Cast("gts.x.core.array.type.v1.0", "gts.x.core.array.type.v1.1~")
+	result, err := store.Cast("gts.x.core.array.type.v1.0~a.b.c.d.v1.0", "gts.x.core.array.type.v1.1~")
 
 	if err != nil {
 		t.Fatalf("Cast failed: %v", err)
@@ -524,7 +525,7 @@ func TestCast_ArrayOfObjects(t *testing.T) {
 func TestCast_InstanceNotFound(t *testing.T) {
 	store := NewGtsStore(nil)
 
-	_, err := store.Cast("gts.x.nonexistent.instance.v1.0", "gts.x.nonexistent.schema.v1.1~")
+	_, err := store.Cast("gts.x.nonexistent.type.v1~a.b.c.d.v1.0", "gts.x.nonexistent.schema.v1.1~")
 
 	if err == nil {
 		t.Error("Expected error for non-existent instance")
@@ -536,7 +537,7 @@ func TestCast_SchemaNotFound(t *testing.T) {
 
 	// Register schema first
 	schema := map[string]any{
-		"$id":      "gts.x.core.test.type.v1.0~",
+		"$id":      "gts://gts.x.core.test.type.v1.0~",
 		"$schema":  "http://json-schema.org/draft-07/schema#",
 		"type":     "object",
 		"required": []any{"id"},
@@ -551,15 +552,16 @@ func TestCast_SchemaNotFound(t *testing.T) {
 
 	// Register instance with schema
 	instance := map[string]any{
-		"$schema": "gts.x.core.test.type.v1.0~",
-		"id":      "test-123",
+		"gtsId": "gts.x.core.test.type.v1.0~a.b.c.d.v1.0",
+		"type":  "gts.x.core.test.type.v1.0~",
+		"id":    "test-123",
 	}
 	instanceEntity := NewJsonEntity(instance, DefaultGtsConfig())
 	if err := store.Register(instanceEntity); err != nil {
 		t.Fatalf("Failed to register instance: %v", err)
 	}
 
-	_, err := store.Cast("gts.x.core.test.type.v1.0~", "gts.x.nonexistent.schema.v1.1~")
+	_, err := store.Cast("gts.x.core.test.type.v1.0~a.b.c.d.v1.0", "gts.x.nonexistent.schema.v1.1~")
 
 	if err == nil {
 		t.Error("Expected error for non-existent target schema")
@@ -571,7 +573,7 @@ func TestCast_MissingRequiredFieldNoDefault(t *testing.T) {
 
 	// Register v1.0 schema
 	v10Schema := map[string]any{
-		"$id":      "gts.x.core.required.type.v1.0~",
+		"$id":      "gts://gts.x.core.required.type.v1.0~",
 		"$schema":  "http://json-schema.org/draft-07/schema#",
 		"type":     "object",
 		"required": []any{"id"},
@@ -586,7 +588,7 @@ func TestCast_MissingRequiredFieldNoDefault(t *testing.T) {
 
 	// Register v1.1 schema with new required field WITHOUT default
 	v11Schema := map[string]any{
-		"$id":      "gts.x.core.required.type.v1.1~",
+		"$id":      "gts://gts.x.core.required.type.v1.1~",
 		"$schema":  "http://json-schema.org/draft-07/schema#",
 		"type":     "object",
 		"required": []any{"id", "newRequired"},
@@ -602,9 +604,9 @@ func TestCast_MissingRequiredFieldNoDefault(t *testing.T) {
 
 	// Register v1.0 instance
 	v10Instance := map[string]any{
-		"gtsId":   "gts.x.core.required.type.v1.0",
-		"$schema": "gts.x.core.required.type.v1.0~",
-		"id":      "test-123",
+		"gtsId": "gts.x.core.required.type.v1.0~a.b.c.d.v1.0",
+		"type":  "gts.x.core.required.type.v1.0~",
+		"id":    "test-123",
 	}
 	v10InstanceEntity := NewJsonEntity(v10Instance, DefaultGtsConfig())
 	if err := store.Register(v10InstanceEntity); err != nil {
@@ -612,7 +614,7 @@ func TestCast_MissingRequiredFieldNoDefault(t *testing.T) {
 	}
 
 	// Cast from v1.0 to v1.1 should fail
-	result, err := store.Cast("gts.x.core.required.type.v1.0", "gts.x.core.required.type.v1.1~")
+	result, err := store.Cast("gts.x.core.required.type.v1.0~a.b.c.d.v1.0", "gts.x.core.required.type.v1.1~")
 
 	if err != nil {
 		t.Fatalf("Cast should not error at top level: %v", err)

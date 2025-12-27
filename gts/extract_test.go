@@ -20,19 +20,19 @@ func TestExtractID_BasicEntityID(t *testing.T) {
 		{
 			name: "Extract from gtsId field",
 			content: map[string]any{
-				"gtsId": "gts.vendor.package.namespace.type.v0",
+				"gtsId": "gts.vendor.package.namespace.type.v0~a.b.c.d.v1",
 				"name":  "Test Entity",
 			},
-			expectedID:    "gts.vendor.package.namespace.type.v0",
+			expectedID:    "gts.vendor.package.namespace.type.v0~a.b.c.d.v1",
 			expectedField: "gtsId",
 		},
 		{
 			name: "Extract from $id field",
 			content: map[string]any{
-				"$id":  "gts.vendor.package.namespace.type.v1",
+				"$id":  "gts.vendor.package.namespace.type.v1~a.b.c.d.v1",
 				"name": "Test Entity",
 			},
-			expectedID:    "gts.vendor.package.namespace.type.v1",
+			expectedID:    "gts.vendor.package.namespace.type.v1~a.b.c.d.v1",
 			expectedField: "$id",
 		},
 		{
@@ -101,18 +101,22 @@ func TestExtractID_SchemaID(t *testing.T) {
 		{
 			name: "Derive from entity ID with tilde",
 			content: map[string]any{
-				"gtsId": "gts.vendor.package.namespace.type.v0~",
+				"gtsId": "gts.vendor.package.namespace.type.v0~a.b.c.d.v1.0",
 			},
 			expectedSchemaID:    "gts.vendor.package.namespace.type.v0~",
-			expectedSchemaField: "", // Not set - entity ID itself is a type
+			expectedSchemaField: "gtsId", // Derived from the chained ID
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := ExtractID(tt.content, nil)
-			if result.SchemaID != tt.expectedSchemaID {
-				t.Errorf("Expected SchemaID %q, got %q", tt.expectedSchemaID, result.SchemaID)
+			var gotSchemaID string
+			if result.SchemaID != nil {
+				gotSchemaID = *result.SchemaID
+			}
+			if gotSchemaID != tt.expectedSchemaID {
+				t.Errorf("Expected SchemaID %q, got %q", tt.expectedSchemaID, gotSchemaID)
 			}
 
 			// Handle both empty string expectation and actual value
@@ -208,8 +212,12 @@ func TestExtractID_CustomConfig(t *testing.T) {
 		}
 		t.Errorf("Expected customId field, got %q", got)
 	}
-	if result.SchemaID != "gts.vendor.package.namespace.type.v0~" {
-		t.Errorf("Expected SchemaID from customType field, got %q", result.SchemaID)
+	var gotSchemaID string
+	if result.SchemaID != nil {
+		gotSchemaID = *result.SchemaID
+	}
+	if gotSchemaID != "gts.vendor.package.namespace.type.v0~" {
+		t.Errorf("Expected SchemaID from customType field, got %q", gotSchemaID)
 	}
 	if result.SelectedSchemaIDField == nil || *result.SelectedSchemaIDField != "customType" {
 		var got string
@@ -241,31 +249,37 @@ func TestExtractID_NoValidID(t *testing.T) {
 func TestExtractID_InvalidIDInField(t *testing.T) {
 	content := map[string]any{
 		"gtsId": "not-a-valid-gts-id",
-		"id":    "gts.vendor.package.namespace.type.v0",
+		"id":    "gts.vendor.package.namespace.type.v0~a.b.c.d.v1",
 	}
 
 	result := ExtractID(content, nil)
 
 	// Should fallback to the "id" field which has a valid GTS ID
-	if result.ID != "gts.vendor.package.namespace.type.v0" {
+	if result.ID != "gts.vendor.package.namespace.type.v0~a.b.c.d.v1" {
 		t.Errorf("Expected fallback to valid ID, got %q", result.ID)
 	}
 }
 
-// TestExtractID_SchemaIDFallback tests schema ID extraction using entity ID as fallback
+// TestExtractID_SchemaIDFallback tests schema ID extraction for schemas with $schema field
 func TestExtractID_SchemaIDFallback(t *testing.T) {
 	content := map[string]any{
-		"$schema": "gts.vendor.package.namespace.type.v0~",
+		"$id":     "gts.vendor.package.namespace.type.v0~",
+		"$schema": "http://json-schema.org/draft-07/schema#",
 	}
 
 	result := ExtractID(content, nil)
 
-	// When no entity ID field is found, schema ID should be used as entity ID too
+	// For schemas, ID comes from $id field
 	if result.ID != "gts.vendor.package.namespace.type.v0~" {
-		t.Errorf("Expected ID to fallback to schema ID, got %q", result.ID)
+		t.Errorf("Expected ID from $id field, got %q", result.ID)
 	}
-	if result.SchemaID != "gts.vendor.package.namespace.type.v0~" {
-		t.Errorf("Expected SchemaID, got %q", result.SchemaID)
+	var gotSchemaID string
+	if result.SchemaID != nil {
+		gotSchemaID = *result.SchemaID
+	}
+	// For base schemas, schema_id comes from $schema field
+	if gotSchemaID != "http://json-schema.org/draft-07/schema#" {
+		t.Errorf("Expected SchemaID from $schema field, got %q", gotSchemaID)
 	}
 }
 
@@ -296,17 +310,19 @@ func TestExtractID_GtsURIPrefix_InDollarIdField(t *testing.T) {
 
 // TestExtractID_GtsURIPrefix_NotStrippedFromOtherFields tests that gts:// prefix is NOT stripped from non-$id fields
 func TestExtractID_GtsURIPrefix_NotStrippedFromOtherFields(t *testing.T) {
-	// gts:// prefix in non-$id field should NOT be stripped (and results in invalid GTS ID)
+	// gts:// prefix in non-$id field should NOT be stripped
+	// The value "gts://gts.vendor..." is not a valid GTS ID, so it's treated as an anonymous instance
 	content := map[string]any{
-		"id": "gts://gts.vendor.package.namespace.type.v1.0",
+		"id": "gts://gts.vendor.package.namespace.type.v1~a.b.c.d.v1.0",
 	}
 
 	result := ExtractID(content, nil)
 
 	// The "id" field is not $id, so the gts:// prefix is NOT stripped
-	// The value "gts://gts.vendor..." is not a valid GTS ID
-	if result.ID != "" {
-		t.Errorf("Expected empty ID (gts:// prefix in 'id' field should not be stripped), got %q", result.ID)
+	// The raw value is returned as-is for anonymous instances (non-GTS IDs)
+	expectedID := "gts://gts.vendor.package.namespace.type.v1~a.b.c.d.v1.0"
+	if result.ID != expectedID {
+		t.Errorf("Expected ID %q (raw value for anonymous instance), got %q", expectedID, result.ID)
 	}
 }
 

@@ -80,7 +80,7 @@ if result.Valid {
 ```go
 // Extract GTS ID from JSON content
 content := map[string]any{
-    "gtsId": "gts.vendor.pkg.ns.type.v1.0",
+    "id": "gts.vendor.pkg.ns.type.v1.0",
     "name":  "My Entity",
 }
 
@@ -131,7 +131,7 @@ store := gts.NewGtsStore(nil)
 
 // Register an entity
 entity := gts.NewJsonEntity(map[string]any{
-    "gtsId": "gts.vendor.pkg.ns.type.v1.0",
+    "id": "gts.vendor.pkg.ns.type.v1.0",
     "name":  "My Entity",
 }, gts.DefaultGtsConfig())
 

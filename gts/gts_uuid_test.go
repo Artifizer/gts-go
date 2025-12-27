@@ -131,7 +131,7 @@ func TestToUUID_MoreExamples(t *testing.T) {
 		},
 		{
 			name:  "Instance with full version",
-			gtsID: "gts.vendor.pkg.ns.type.v1.0",
+			gtsID: "gts.vendor.pkg.ns.type.v1.0~a.b.c.d.v1",
 		},
 		{
 			name:  "Multiple chained segments",

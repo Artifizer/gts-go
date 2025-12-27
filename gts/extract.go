@@ -34,7 +34,7 @@ type JsonEntity struct {
 // ExtractIDResult holds the result of extracting ID information from JSON content
 type ExtractIDResult struct {
 	ID                    string  `json:"id"`
-	SchemaID              string  `json:"schema_id"`
+	SchemaID              *string `json:"schema_id"`
 	SelectedEntityField   *string `json:"selected_entity_field"`
 	SelectedSchemaIDField *string `json:"selected_schema_id_field"`
 	IsSchema              bool    `json:"is_schema"`
@@ -64,17 +64,28 @@ func NewJsonEntityWithFile(content map[string]any, cfg *GtsConfig, file *JsonFil
 	// Extract schema ID
 	entity.SchemaID = entity.calcJSONSchemaID(cfg, entityIDValue)
 
-	// If no valid GTS ID found in entity fields, use schema ID as fallback
-	if entityIDValue == "" || !IsValidGtsID(entityIDValue) {
-		if entity.SchemaID != "" && IsValidGtsID(entity.SchemaID) {
-			entityIDValue = entity.SchemaID
+	// ID extraction logic based on entity type
+	if entity.IsSchema {
+		// For schemas: use entity ID (should be from $id field)
+		if entityIDValue != "" && IsValidGtsID(entityIDValue) {
+			gtsID, _ := NewGtsID(entityIDValue)
+			entity.GtsID = gtsID
 		}
-	}
-
-	// Create GtsID if valid
-	if entityIDValue != "" && IsValidGtsID(entityIDValue) {
-		gtsID, _ := NewGtsID(entityIDValue)
-		entity.GtsID = gtsID
+	} else {
+		// For instances: different logic based on well-known vs anonymous
+		if entityIDValue != "" && IsValidGtsID(entityIDValue) {
+			// Well-known instance: GTS ID in id field
+			gtsID, _ := NewGtsID(entityIDValue)
+			entity.GtsID = gtsID
+			// Schema ID should be derived from the chain if not explicitly set
+			if entity.SchemaID == "" && entity.SelectedEntityField != "" {
+				entity.SchemaID = entity.calcJSONSchemaID(cfg, entityIDValue)
+			}
+		} else {
+			// Anonymous instance: non-GTS ID in id field, GTS type in type field
+			// GtsID remains nil for anonymous instances
+			// entity.SchemaID should be set from type field
+		}
 	}
 
 	// Extract GTS references from content
@@ -100,85 +111,20 @@ func (e *JsonEntity) setLabel() {
 }
 
 // isJSONSchema checks if the content represents a JSON Schema
+// A JSON document is a schema if and only if it has a $schema field
 func isJSONSchema(content map[string]any) bool {
 	if content == nil {
 		return false
 	}
 
-	schemaURL, ok := content["$schema"]
-	if !ok {
-		schemaURL, ok = content["$$schema"]
-		if !ok {
-			return false
-		}
+	// Schema Detection: a JSON document is a schema if and only if it has a $schema field
+	_, hasSchema := content["$schema"]
+	if !hasSchema {
+		// Try alternative field name
+		_, hasSchema = content["$$schema"]
 	}
 
-	schemaStr, ok := schemaURL.(string)
-	if !ok {
-		return false
-	}
-
-	// Check if this is a JSON Schema meta-schema reference
-	if strings.HasPrefix(schemaStr, "http://json-schema.org/") ||
-		strings.HasPrefix(schemaStr, "https://json-schema.org/") {
-		return true
-	}
-
-	// Special GTS schema protocol
-	if strings.HasPrefix(schemaStr, "gts://") {
-		return true
-	}
-
-	// If $schema points to a GTS type ID, determine if this is a schema or instance
-	if strings.HasPrefix(schemaStr, "gts.") {
-		// Check for entity ID fields that might indicate this is a schema
-		entityIDFields := []string{"$id", "gtsId", "gtsIid", "gtsOid", "gtsI", "gts_id", "gts_oid", "gts_iid", "id"}
-
-		for _, field := range entityIDFields {
-			if idVal, hasID := content[field]; hasID {
-				if idStr, ok := idVal.(string); ok && strings.HasSuffix(idStr, "~") {
-					// Entity ID ends with ~ - this is definitely a schema
-					return true
-				}
-			}
-		}
-
-		// No entity ID field ending with ~
-		// Check if this could be a schema without explicit entity ID based on content
-		if strings.HasSuffix(schemaStr, "~") {
-			// Additional heuristic: if it has schema-like properties, consider it a schema
-			if _, hasType := content["type"]; hasType {
-				if _, hasProps := content["properties"]; hasProps {
-					return true
-				}
-				if _, hasItems := content["items"]; hasItems {
-					return true
-				}
-				if _, hasEnum := content["enum"]; hasEnum {
-					return true
-				}
-			}
-
-			// Check if it has NO entity ID fields at all (pure schema)
-			hasEntityID := false
-			for _, field := range entityIDFields {
-				if _, exists := content[field]; exists {
-					hasEntityID = true
-					break
-				}
-			}
-
-			if !hasEntityID {
-				// No entity ID and $schema ends with ~ - likely a schema definition
-				return true
-			}
-		}
-
-		// Has entity ID but doesn't end with ~, or has other characteristics of an instance
-		return false
-	}
-
-	return false
+	return hasSchema
 }
 
 // getFieldValue retrieves a string value from content field
@@ -242,27 +188,46 @@ func (e *JsonEntity) calcJSONEntityID(cfg *GtsConfig) string {
 
 // calcJSONSchemaID extracts the schema ID from JSON content
 func (e *JsonEntity) calcJSONSchemaID(cfg *GtsConfig, entityIDValue string) string {
+	if e.IsSchema {
+		// For derived schemas, derive parent type from chain
+		if entityIDValue != "" && IsValidGtsID(entityIDValue) && strings.HasSuffix(entityIDValue, "~") {
+			firstTilde := strings.Index(entityIDValue, "~")
+			if firstTilde > 0 {
+				secondTilde := strings.Index(entityIDValue[firstTilde+1:], "~")
+				if secondTilde > 0 {
+					// This is a derived schema, derive parent from chain
+					e.SelectedSchemaIDField = e.SelectedEntityField
+					return entityIDValue[:firstTilde+1]
+				}
+			}
+		}
+
+		// For base schemas: get schema ID from $schema field
+		if schemaValue := e.getFieldValue("$schema"); schemaValue != "" {
+			e.SelectedSchemaIDField = "$schema"
+			return schemaValue
+		}
+		return ""
+	}
+
+	// For instances: try entity ID chain first, then SchemaIDFields
+	if entityIDValue != "" && IsValidGtsID(entityIDValue) {
+		// For instances, find last ~ and return everything up to and including it
+		// But skip if entity ID ends with ~ (that would be a type, not an instance)
+		if !strings.HasSuffix(entityIDValue, "~") {
+			lastTilde := strings.LastIndex(entityIDValue, "~")
+			if lastTilde > 0 {
+				e.SelectedSchemaIDField = e.SelectedEntityField
+				return entityIDValue[:lastTilde+1]
+			}
+		}
+	}
+
+	// If no entity ID found, use SchemaIDFields to find schema reference
 	field, value := e.firstNonEmptyField(cfg.SchemaIDFields)
 	if value != "" {
 		e.SelectedSchemaIDField = field
 		return value
-	}
-
-	// If no schema ID field found, try to derive from entity ID
-	if entityIDValue != "" && IsValidGtsID(entityIDValue) {
-		// If entity ID ends with ~, it's already a type ID
-		if strings.HasSuffix(entityIDValue, "~") {
-			// Don't set SelectedSchemaIDField - the entity ID itself is a type
-			return entityIDValue
-		}
-
-		// Find last ~ and return everything up to and including it
-		lastTilde := strings.LastIndex(entityIDValue, "~")
-		if lastTilde > 0 {
-			// Set SelectedSchemaIDField to the entity field since we extracted from it
-			e.SelectedSchemaIDField = e.SelectedEntityField
-			return entityIDValue[:lastTilde+1]
-		}
 	}
 
 	return ""
@@ -273,8 +238,12 @@ func ExtractID(content map[string]any, cfg *GtsConfig) *ExtractIDResult {
 	entity := NewJsonEntity(content, cfg)
 
 	result := &ExtractIDResult{
-		SchemaID: entity.SchemaID,
 		IsSchema: entity.IsSchema,
+	}
+
+	// Set SchemaID as pointer (nil if empty)
+	if entity.SchemaID != "" {
+		result.SchemaID = &entity.SchemaID
 	}
 
 	// Set SelectedEntityField as pointer (nil if empty)
@@ -287,8 +256,21 @@ func ExtractID(content map[string]any, cfg *GtsConfig) *ExtractIDResult {
 		result.SelectedSchemaIDField = &entity.SelectedSchemaIDField
 	}
 
-	if entity.GtsID != nil {
-		result.ID = entity.GtsID.ID
+	// Return effective_id() based on entity type
+	if entity.IsSchema || (entity.GtsID != nil) {
+		// For schemas and well-known instances: return GTS ID
+		if entity.GtsID != nil {
+			result.ID = entity.GtsID.ID
+		}
+	} else {
+		// For anonymous instances: return instance_id (UUID or non-GTS value from id field)
+		if entity.SelectedEntityField != "" {
+			if val, ok := content[entity.SelectedEntityField]; ok {
+				if strVal, ok := val.(string); ok {
+					result.ID = strVal
+				}
+			}
+		}
 	}
 
 	return result

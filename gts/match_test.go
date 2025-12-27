@@ -325,8 +325,8 @@ func TestMatchIDPattern_ExactMatch(t *testing.T) {
 		},
 		{
 			name:      "Exact match with full version",
-			candidate: "gts.vendor.pkg.ns.type.v1.2",
-			pattern:   "gts.vendor.pkg.ns.type.v1.2",
+			candidate: "gts.vendor.pkg.ns.type.v1.2~a.b.c.d.v1",
+			pattern:   "gts.vendor.pkg.ns.type.v1.2~a.b.c.d.v1",
 			match:     true,
 		},
 		{

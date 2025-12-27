@@ -24,7 +24,7 @@ The commands are:
 
 	validate-id     validate a GTS ID format
 	parse-id        parse a GTS ID into its components
-	match-id        match a GTS ID against a pattern
+	match-id-pattern match a GTS ID against a pattern
 	uuid            generate UUID from a GTS ID
 	validate        validate an instance against its schema
 	relationships   resolve relationships for an entity
@@ -80,7 +80,7 @@ func (c *Command) Runnable() bool {
 var commands = []*Command{
 	cmdValidateID,
 	cmdParseID,
-	cmdMatchID,
+	cmdMatchIDPattern,
 	cmdUUID,
 	cmdValidate,
 	cmdRelationships,

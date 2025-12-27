@@ -410,7 +410,7 @@ func TestValidateInstance_NoSchemaID(t *testing.T) {
 
 	// Register instance without schema ID
 	instance := map[string]any{
-		"id":        "gts.x.test6.noschem.item.v1",
+		"id":        "gts.x.test6.noschem.item.v1~a.b.c.d.v1",
 		"someField": "value",
 	}
 	instanceEntity := NewJsonEntity(instance, DefaultGtsConfig())
@@ -419,7 +419,7 @@ func TestValidateInstance_NoSchemaID(t *testing.T) {
 	}
 
 	// Validate instance without schema - should fail
-	result := store.ValidateInstance("gts.x.test6.noschem.item.v1")
+	result := store.ValidateInstance("gts.x.test6.noschem.item.v1~a.b.c.d.v1")
 
 	if result.OK {
 		t.Errorf("Expected validation to fail for instance without schema")

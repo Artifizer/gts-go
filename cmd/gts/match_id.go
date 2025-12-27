@@ -9,18 +9,18 @@ import (
 	"github.com/GlobalTypeSystem/gts-go/gts"
 )
 
-var cmdMatchID = &Command{
-	UsageLine: "match-id -pattern <pattern> -candidate <gts-id>",
+var cmdMatchIDPattern = &Command{
+	UsageLine: "match-id-pattern -pattern <pattern> -candidate <gts-id>",
 	Short:     "match a GTS ID against a pattern",
 	Long: `
-Match-id checks whether a GTS identifier matches a pattern.
+Match-id-pattern checks whether a GTS identifier matches a pattern.
 
 The -pattern flag specifies the pattern (may contain wildcards).
 The -candidate flag specifies the GTS ID to match.
 
 Example:
 
-	gts match-id -pattern "gts.vendor.pkg.*" -candidate gts.vendor.pkg.ns.type.v1.0
+	gts match-id-pattern -pattern "gts.vendor.pkg.*" -candidate gts.vendor.pkg.ns.type.v1.0
 	`,
 }
 
@@ -30,12 +30,12 @@ var (
 )
 
 func init() {
-	cmdMatchID.Run = runMatchID
-	cmdMatchID.Flag.StringVar(&matchPattern, "pattern", "", "pattern to match against")
-	cmdMatchID.Flag.StringVar(&matchCandidate, "candidate", "", "candidate GTS ID")
+	cmdMatchIDPattern.Run = runMatchIDPattern
+	cmdMatchIDPattern.Flag.StringVar(&matchPattern, "pattern", "", "pattern to match against")
+	cmdMatchIDPattern.Flag.StringVar(&matchCandidate, "candidate", "", "candidate GTS ID")
 }
 
-func runMatchID(cmd *Command, args []string) {
+func runMatchIDPattern(cmd *Command, args []string) {
 	if matchPattern == "" || matchCandidate == "" {
 		cmd.Usage()
 	}

@@ -5,28 +5,60 @@ Released under Apache License 2.0
 
 package gts
 
+import (
+	"fmt"
+	"strings"
+)
+
 // IDValidationResult represents the result of GTS ID validation
 type IDValidationResult struct {
-	ID    string `json:"id"`
-	Valid bool   `json:"valid"`
-	Error string `json:"error"`
+	ID         string `json:"id"`
+	Valid      bool   `json:"valid"`
+	IsSchema   bool   `json:"is_schema"`
+	IsWildcard bool   `json:"is_wildcard"`
+	Error      string `json:"error,omitempty"`
 }
 
 // ValidateGtsID validates a GTS identifier and returns a result
 func ValidateGtsID(gtsID string) *IDValidationResult {
-	_, err := NewGtsID(gtsID)
-	if err != nil {
-		return &IDValidationResult{
-			ID:    gtsID,
-			Valid: false,
-			Error: err.Error(),
+	// Check if it contains wildcards first
+	isWildcard := strings.Contains(gtsID, "*")
+	result := &IDValidationResult{
+		ID:         gtsID,
+		IsWildcard: isWildcard,
+	}
+
+	if isWildcard {
+		// Validate as wildcard pattern
+		_, err := validateWildcard(gtsID)
+		if err != nil {
+			result.Valid = false
+			result.IsSchema = false
+			result.Error = formatValidateError(gtsID, err)
+			return result
 		}
+
+		result.Valid = true
+		result.IsSchema = strings.HasSuffix(gtsID, "~*") || strings.HasSuffix(gtsID, ".*")
+		return result
 	}
-	return &IDValidationResult{
-		ID:    gtsID,
-		Valid: true,
-		Error: "",
+
+	// Validate as regular GTS ID
+	id, err := NewGtsID(gtsID)
+	if err != nil {
+		result.Valid = false
+		result.IsSchema = false
+		result.Error = formatValidateError(gtsID, err)
+		return result
 	}
+
+	result.Valid = true
+	result.IsSchema = id.IsType()
+	return result
+}
+
+func formatValidateError(gtsID string, err error) string {
+	return fmt.Sprintf("Unable to validate GTS ID '%s': %s", gtsID, err.Error())
 }
 
 // ExtractGtsID extracts GTS ID from JSON content

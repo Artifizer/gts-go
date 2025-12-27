@@ -299,6 +299,17 @@ func (s *GtsStore) ValidateSchema(gtsID string) error {
 		return fmt.Errorf("schema content is nil")
 	}
 
+	// Validate $ref constraints in the schema
+	refValidator := NewRefValidator()
+	refErrors := refValidator.ValidateSchemaRefs(entity.Content, "")
+	if len(refErrors) > 0 {
+		var errorMsgs []string
+		for _, err := range refErrors {
+			errorMsgs = append(errorMsgs, err.Error())
+		}
+		return fmt.Errorf("$ref validation failed: %s", strings.Join(errorMsgs, "; "))
+	}
+
 	// Validate x-gts-ref constraints in the schema
 	xGtsRefValidator := NewXGtsRefValidator(s)
 	xGtsRefErrors := xGtsRefValidator.ValidateSchema(entity.Content, "", nil)

@@ -16,7 +16,6 @@ func DefaultGtsConfig() *GtsConfig {
 	return &GtsConfig{
 		EntityIDFields: []string{
 			"$id",
-			"$$id",
 			"gtsId",
 			"gtsIid",
 			"gtsOid",
@@ -27,12 +26,12 @@ func DefaultGtsConfig() *GtsConfig {
 			"id",
 		},
 		SchemaIDFields: []string{
-			"$schema",
-			"$$schema",
 			"gtsTid",
+			"gtsType",
 			"gtsT",
 			"gts_t",
 			"gts_tid",
+			"gts_type",
 			"type",
 			"schema",
 		},

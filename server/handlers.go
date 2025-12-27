@@ -54,17 +54,139 @@ func (s *Server) handleAddEntity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	validationParam := r.URL.Query().Get("validate")
+	if validationParam == "" {
+		validationParam = r.URL.Query().Get("validation")
+	}
+
+	hasSchemaField := false
+	if schemaVal, ok := content["$schema"]; ok && schemaVal != nil {
+		hasSchemaField = true
+	} else if schemaVal, ok := content["$$schema"]; ok && schemaVal != nil {
+		content["$schema"] = schemaVal
+		hasSchemaField = true
+	}
+	if _, exists := content["$id"]; !exists {
+		if idVal, ok := content["$$id"]; ok {
+			content["$id"] = idVal
+		}
+	}
+
+	if hasSchemaField {
+		idField, exists := content["$id"]
+		if !exists || idField == nil {
+			s.writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+				"ok":    false,
+				"error": "JSON Schema $id field is required when $schema is present",
+			})
+			return
+		}
+		idStr, ok := idField.(string)
+		if !ok {
+			s.writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+				"ok":    false,
+				"error": "JSON Schema $id field must be a string",
+			})
+			return
+		}
+		idStr = strings.TrimSpace(idStr)
+		if idStr == "" {
+			s.writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+				"ok":    false,
+				"error": "JSON Schema $id field cannot be empty",
+			})
+			return
+		}
+		if !strings.HasPrefix(idStr, gts.GtsURIPrefix) && !strings.HasPrefix(idStr, gts.GtsPrefix) {
+			s.writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+				"ok":    false,
+				"error": "JSON Schema $id must be a valid GTS identifier (optionally using gts:// prefix)",
+			})
+			return
+		}
+		normalizedID := strings.TrimPrefix(idStr, gts.GtsURIPrefix)
+		if strings.Contains(normalizedID, "*") {
+			s.writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+				"ok":    false,
+				"error": "Wildcards are not allowed in schema IDs, only in patterns for access control",
+			})
+			return
+		}
+		isBaseSchemaID := strings.Count(normalizedID, "~") == 1 && strings.HasSuffix(normalizedID, "~")
+		if isBaseSchemaID && !strings.HasPrefix(idStr, gts.GtsURIPrefix) {
+			s.writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+				"ok":    false,
+				"error": "JSON Schema $id field must use gts:// URI prefix for base schemas",
+			})
+			return
+		}
+		if !gts.IsValidGtsID(normalizedID) {
+			s.writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+				"ok":    false,
+				"error": "JSON Schema $id must be a well-formed GTS identifier",
+			})
+			return
+		}
+	}
+
 	entity := gts.NewJsonEntity(content, gts.DefaultGtsConfig())
 	if entity.GtsID == nil {
-		s.writeJSON(w, http.StatusOK, map[string]any{
+		status := http.StatusOK
+		if validationParam == "true" {
+			status = http.StatusUnprocessableEntity
+		}
+		s.writeJSON(w, status, map[string]any{
 			"ok":    false,
 			"error": "Unable to extract GTS ID from entity",
 		})
 		return
 	}
 
-	// Always validate x-gts-ref constraints for schemas
+	// Always validate schema constraints for schemas
 	if entity.IsSchema {
+		// Validate $id field for GTS schemas - check for specific invalid patterns
+		if idField, exists := entity.Content["$id"]; exists {
+			if idStr, ok := idField.(string); ok {
+				// Reject plain gts. prefix only for base schemas (single segment ending with ~)
+				// Derived schemas (multiple ~ segments) are allowed to use plain gts. format
+				if strings.HasPrefix(idStr, "gts.") && !strings.HasPrefix(idStr, "gts://") {
+					// Count ~ segments to determine if it's a base or derived schema
+					tildeParts := strings.Split(idStr, "~")
+					// If it's a base schema (only 2 parts: prefix and empty after ~), require gts://
+					if len(tildeParts) == 2 && tildeParts[1] == "" {
+						s.writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+							"ok":    false,
+							"error": "JSON Schema $id field must use gts:// URI prefix for GTS identifiers, not plain gts. prefix",
+						})
+						return
+					}
+				}
+				// Check for wildcards in any GTS schema IDs
+				if (strings.HasPrefix(idStr, "gts://") || strings.HasPrefix(idStr, "gts.")) && strings.Contains(idStr, "*") {
+					s.writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+						"ok":    false,
+						"error": "Wildcards are not allowed in schema IDs, only in patterns for access control",
+					})
+					return
+				}
+			}
+		}
+
+		// Validate $ref constraints in the schema
+		refValidator := gts.NewRefValidator()
+		refErrors := refValidator.ValidateSchemaRefs(entity.Content, "")
+		if len(refErrors) > 0 {
+			var errorMsgs []string
+			for _, err := range refErrors {
+				errorMsgs = append(errorMsgs, err.Error())
+			}
+			s.writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+				"ok":    false,
+				"error": fmt.Sprintf("$ref validation failed: %s", strings.Join(errorMsgs, "; ")),
+			})
+			return
+		}
+
 		// Create a validator to validate x-gts-ref patterns in schema definition
 		xGtsRefValidator := gts.NewXGtsRefValidator(s.store)
 		xGtsRefErrors := xGtsRefValidator.ValidateSchema(entity.Content, "", nil)
@@ -73,9 +195,9 @@ func (s *Server) handleAddEntity(w http.ResponseWriter, r *http.Request) {
 			for _, err := range xGtsRefErrors {
 				errorMsgs = append(errorMsgs, err.Error())
 			}
-			s.writeJSON(w, http.StatusOK, map[string]any{
+			s.writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
 				"ok":    false,
-				"error": fmt.Sprintf("Validation failed: %s", strings.Join(errorMsgs, "; ")),
+				"error": fmt.Sprintf("x-gts-ref validation failed: %s", strings.Join(errorMsgs, "; ")),
 			})
 			return
 		}

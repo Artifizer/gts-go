@@ -20,7 +20,7 @@ func TestGtsFileReader_SingleFile(t *testing.T) {
 	// Create a JSON file with a single entity
 	testFile := filepath.Join(tmpDir, "test.json")
 	content := map[string]any{
-		"gtsId": "gts.vendor.package.namespace.type.v0",
+		"gtsId": "gts.vendor.package.namespace.type.v0~a.b.c.d.v1",
 		"name":  "Test Entity",
 	}
 
@@ -42,7 +42,7 @@ func TestGtsFileReader_SingleFile(t *testing.T) {
 		t.Fatal("Expected entity, got nil")
 	}
 
-	if entity.GtsID == nil || entity.GtsID.ID != "gts.vendor.package.namespace.type.v0" {
+	if entity.GtsID == nil || entity.GtsID.ID != "gts.vendor.package.namespace.type.v0~a.b.c.d.v1" {
 		t.Errorf("Expected GtsID 'gts.vendor.package.namespace.type.v0', got %v", entity.GtsID)
 	}
 
@@ -59,15 +59,15 @@ func TestGtsFileReader_ArrayOfEntities(t *testing.T) {
 	testFile := filepath.Join(tmpDir, "test.json")
 	content := []map[string]any{
 		{
-			"gtsId": "gts.vendor.package.namespace.type1.v0",
+			"gtsId": "gts.vendor.package.namespace.type1.v0~",
 			"name":  "Entity 1",
 		},
 		{
-			"gtsId": "gts.vendor.package.namespace.type2.v0",
+			"gtsId": "gts.vendor.package.namespace.type2.v0~",
 			"name":  "Entity 2",
 		},
 		{
-			"gtsId": "gts.vendor.package.namespace.type3.v0",
+			"gtsId": "gts.vendor.package.namespace.type3.v0~",
 			"name":  "Entity 3",
 		},
 	}
@@ -125,19 +125,19 @@ func TestGtsFileReader_Directory(t *testing.T) {
 		{
 			name: "entity1.json",
 			content: map[string]any{
-				"gtsId": "gts.vendor.package.namespace.type1.v0",
+				"gtsId": "gts.vendor.package.namespace.type1.v0~",
 			},
 		},
 		{
 			name: "entity2.json",
 			content: map[string]any{
-				"gtsId": "gts.vendor.package.namespace.type2.v0",
+				"gtsId": "gts.vendor.package.namespace.type2.v0~",
 			},
 		},
 		{
 			name: "entity3.gts",
 			content: map[string]any{
-				"gtsId": "gts.vendor.package.namespace.type3.v0",
+				"gtsId": "gts.vendor.package.namespace.type3.v0~",
 			},
 		},
 	}
@@ -179,7 +179,7 @@ func TestGtsFileReader_ExcludeDirectories(t *testing.T) {
 	// Create a valid file in root
 	rootFile := filepath.Join(tmpDir, "root.json")
 	rootContent := map[string]any{
-		"gtsId": "gts.vendor.package.namespace.root.v0",
+		"gtsId": "gts.vendor.package.namespace.root.v0~",
 	}
 	data, _ := json.Marshal(rootContent)
 	os.WriteFile(rootFile, data, 0644)
@@ -189,7 +189,7 @@ func TestGtsFileReader_ExcludeDirectories(t *testing.T) {
 	os.Mkdir(nodeModules, 0755)
 	nmFile := filepath.Join(nodeModules, "excluded.json")
 	nmContent := map[string]any{
-		"gtsId": "gts.vendor.package.namespace.excluded.v0",
+		"gtsId": "gts.vendor.package.namespace.excluded.v0~",
 	}
 	data, _ = json.Marshal(nmContent)
 	os.WriteFile(nmFile, data, 0644)
@@ -212,7 +212,7 @@ func TestGtsFileReader_ExcludeDirectories(t *testing.T) {
 		t.Errorf("Expected 1 entity (excluding node_modules), got %d", len(entities))
 	}
 
-	if len(entities) > 0 && entities[0].GtsID.ID != "gts.vendor.package.namespace.root.v0" {
+	if len(entities) > 0 && entities[0].GtsID.ID != "gts.vendor.package.namespace.root.v0~" {
 		t.Errorf("Expected root entity, got %s", entities[0].GtsID.ID)
 	}
 }
@@ -223,7 +223,7 @@ func TestGtsFileReader_Reset(t *testing.T) {
 
 	testFile := filepath.Join(tmpDir, "test.json")
 	content := map[string]any{
-		"gtsId": "gts.vendor.package.namespace.type.v0",
+		"gtsId": "gts.vendor.package.namespace.type.v0~",
 	}
 
 	data, _ := json.Marshal(content)
@@ -267,14 +267,14 @@ func TestGtsFileReader_MultiplePaths(t *testing.T) {
 	// Create a file in each directory
 	file1 := filepath.Join(dir1, "entity1.json")
 	content1 := map[string]any{
-		"gtsId": "gts.vendor.package.namespace.type1.v0",
+		"gtsId": "gts.vendor.package.namespace.type1.v0~",
 	}
 	data1, _ := json.Marshal(content1)
 	os.WriteFile(file1, data1, 0644)
 
 	file2 := filepath.Join(dir2, "entity2.json")
 	content2 := map[string]any{
-		"gtsId": "gts.vendor.package.namespace.type2.v0",
+		"gtsId": "gts.vendor.package.namespace.type2.v0~",
 	}
 	data2, _ := json.Marshal(content2)
 	os.WriteFile(file2, data2, 0644)
@@ -307,7 +307,7 @@ func TestGtsFileReader_NoGtsID(t *testing.T) {
 			"name": "No GTS ID",
 		},
 		{
-			"gtsId": "gts.vendor.package.namespace.type.v0",
+			"gtsId": "gts.vendor.package.namespace.type.v0~",
 		},
 	}
 
@@ -342,7 +342,7 @@ func TestGtsFileReader_InvalidJSON(t *testing.T) {
 	// Create a valid file
 	validFile := filepath.Join(tmpDir, "valid.json")
 	content := map[string]any{
-		"gtsId": "gts.vendor.package.namespace.type.v0",
+		"gtsId": "gts.vendor.package.namespace.type.v0~",
 	}
 	data, _ := json.Marshal(content)
 	os.WriteFile(validFile, data, 0644)
@@ -370,7 +370,7 @@ func TestGtsFileReader_ReadByID(t *testing.T) {
 
 	testFile := filepath.Join(tmpDir, "test.json")
 	content := map[string]any{
-		"gtsId": "gts.vendor.package.namespace.type.v0",
+		"gtsId": "gts.vendor.package.namespace.type.v0~",
 	}
 	data, _ := json.Marshal(content)
 	os.WriteFile(testFile, data, 0644)
@@ -378,7 +378,7 @@ func TestGtsFileReader_ReadByID(t *testing.T) {
 	reader := NewGtsFileReaderFromPath(testFile, nil)
 
 	// ReadByID should always return nil for file reader
-	entity := reader.ReadByID("gts.vendor.package.namespace.type.v0")
+	entity := reader.ReadByID("gts.vendor.package.namespace.type.v0~")
 	if entity != nil {
 		t.Error("ReadByID should return nil for file reader")
 	}

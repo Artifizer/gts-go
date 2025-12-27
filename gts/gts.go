@@ -134,6 +134,13 @@ func NewGtsID(id string) (*GtsID, error) {
 		offset += len(part)
 	}
 
+	// Single-segment instances are prohibited
+	// Well-known instances must be chained with at least one type segment
+	// This check should only apply to non-wildcard, non-type single-segment IDs
+	if len(gtsID.Segments) == 1 && !gtsID.IsType() && !gtsID.Segments[0].IsWildcard {
+		return nil, &InvalidGtsIDError{GtsID: id, Cause: "Single-segment instances are prohibited. Well-known instances must be chained with a type segment"}
+	}
+
 	return gtsID, nil
 }
 
@@ -149,6 +156,16 @@ func IsValidGtsID(s string) bool {
 // IsType returns true if this identifier represents a type (ends with ~)
 func (g *GtsID) IsType() bool {
 	return strings.HasSuffix(g.ID, "~")
+}
+
+// IsWildcard returns true if this identifier contains wildcard patterns
+func (g *GtsID) IsWildcard() bool {
+	for _, segment := range g.Segments {
+		if segment.IsWildcard {
+			return true
+		}
+	}
+	return false
 }
 
 // ToUUID generates a deterministic UUID (v5) from the GTS identifier

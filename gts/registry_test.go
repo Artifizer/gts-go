@@ -72,7 +72,7 @@ func TestGtsReferenceValidation(t *testing.T) {
 
 		// Now register an instance that references the schema
 		instance := NewJsonEntity(map[string]any{
-			"gtsId":   "gts.test.pkg.ns.user.v1.0",
+			"gtsId":   "gts.test.pkg.ns.user.v1~a.b.c.d.v1.0",
 			"$schema": "gts.test.pkg.ns.user.v1~",
 			"id":      "user-123",
 			"name":    "John Doe",
@@ -90,7 +90,7 @@ func TestGtsReferenceValidation(t *testing.T) {
 
 		// Register an instance that references non-existent schema
 		instance := NewJsonEntity(map[string]any{
-			"gtsId":   "gts.test.pkg.ns.user.v1.0",
+			"gtsId":   "gts.test.pkg.ns.user.v1~a.b.c.d.v1.0",
 			"$schema": "gts.test.pkg.ns.nonexistent.v1~",
 			"id":      "user-123",
 			"name":    "John Doe",
@@ -110,7 +110,7 @@ func TestGtsReferenceValidation(t *testing.T) {
 
 		// Register an instance that references non-existent schema
 		instance := NewJsonEntity(map[string]any{
-			"gtsId":   "gts.test.pkg.ns.user.v1.0",
+			"gtsId":   "gts.test.pkg.ns.user.v1~a.b.c.d.v1.0",
 			"$schema": "gts.test.pkg.ns.nonexistent.v1~",
 			"id":      "user-123",
 			"name":    "John Doe",
@@ -197,7 +197,7 @@ func TestValidateSchema(t *testing.T) {
 	t.Run("NonSchemaID", func(t *testing.T) {
 		store := NewGtsStore(nil)
 
-		err := store.ValidateSchema("gts.test.pkg.ns.instance.v1.0")
+		err := store.ValidateSchema("gts.test.pkg.ns.instance.v1~a.b.c.d.v1.0")
 		if err == nil {
 			t.Fatal("Expected error for non-schema ID")
 		}
@@ -272,7 +272,7 @@ func TestRegistryIntegration(t *testing.T) {
 			"$id":     "gts.test.pkg.ns.admin.v1~",
 			"$schema": "https://json-schema.org/draft/2020-12/schema",
 			"allOf": []any{
-				map[string]any{"$ref": "gts.test.pkg.ns.user.v1~"},
+				map[string]any{"$ref": "gts://gts.test.pkg.ns.user.v1~"},
 				map[string]any{
 					"type": "object",
 					"properties": map[string]any{
@@ -289,10 +289,9 @@ func TestRegistryIntegration(t *testing.T) {
 
 		// 3. Register instances
 		userInstance := NewJsonEntity(map[string]any{
-			"gtsId":   "gts.test.pkg.ns.user.v1.0",
-			"$schema": "gts.test.pkg.ns.user.v1~",
-			"id":      "user-123",
-			"name":    "John Doe",
+			"gtsId": "gts.test.pkg.ns.user.v1~a.b.c.d.v1.0",
+			"id":    "user-123",
+			"name":  "John Doe",
 		}, DefaultGtsConfig())
 
 		err = store.Register(userInstance)
@@ -301,8 +300,7 @@ func TestRegistryIntegration(t *testing.T) {
 		}
 
 		adminInstance := NewJsonEntity(map[string]any{
-			"gtsId":       "gts.test.pkg.ns.admin.v1.0",
-			"$schema":     "gts.test.pkg.ns.admin.v1~",
+			"gtsId":       "gts.test.pkg.ns.admin.v1~a.b.c.d.v1.0",
 			"id":          "admin-456",
 			"name":        "Jane Admin",
 			"permissions": []string{"read", "write"},

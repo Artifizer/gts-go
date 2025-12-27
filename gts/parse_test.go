@@ -225,7 +225,7 @@ func TestParseID_VersionComponents(t *testing.T) {
 		},
 		{
 			name:     "Major and minor version (instance)",
-			id:       "gts.x.pkg.ns.type.v2.5",
+			id:       "gts.x.pkg.ns.type.v2.5~a.b.c.d.v1.0",
 			verMajor: 2,
 			verMinor: intPtr(5),
 			isType:   false,
@@ -239,7 +239,7 @@ func TestParseID_VersionComponents(t *testing.T) {
 		},
 		{
 			name:     "Version zero with minor",
-			id:       "gts.x.pkg.ns.type.v0.0",
+			id:       "gts.x.pkg.ns.type.v0.0~a.b.c.d.v1.0",
 			verMajor: 0,
 			verMinor: intPtr(0),
 			isType:   false,
@@ -254,10 +254,15 @@ func TestParseID_VersionComponents(t *testing.T) {
 				t.Fatalf("Expected OK=true, got OK=false with error: %s", result.Error)
 			}
 
-			if len(result.Segments) != 1 {
-				t.Fatalf("Expected 1 segment, got %d", len(result.Segments))
+			// For type IDs, expect 1 segment; for instance IDs, expect 2 segments
+			if tt.isType && len(result.Segments) != 1 {
+				t.Fatalf("Expected 1 segment for type ID, got %d", len(result.Segments))
+			}
+			if !tt.isType && len(result.Segments) != 2 {
+				t.Fatalf("Expected 2 segments for instance ID, got %d", len(result.Segments))
 			}
 
+			// Version info is always in the first segment
 			seg := result.Segments[0]
 
 			if seg.VerMajor != tt.verMajor {
@@ -272,8 +277,9 @@ func TestParseID_VersionComponents(t *testing.T) {
 				t.Errorf("Expected ver_minor=%d, got %d", *tt.verMinor, *seg.VerMinor)
 			}
 
-			if seg.IsType != tt.isType {
-				t.Errorf("Expected is_type=%v, got %v", tt.isType, seg.IsType)
+			// Check overall ID type (IsSchema), not individual segment's IsType
+			if result.IsSchema != tt.isType {
+				t.Errorf("Expected is_schema=%v, got %v", tt.isType, result.IsSchema)
 			}
 		})
 	}
@@ -377,16 +383,17 @@ func TestParseID_InvalidIDs(t *testing.T) {
 
 // TestParseID_AllComponents tests that all component fields are extracted
 func TestParseID_AllComponents(t *testing.T) {
-	result := ParseID("gts.myvendor.mypackage.mynamespace.mytype.v3.7")
+	result := ParseID("gts.myvendor.mypackage.mynamespace.mytype.v3.7~a.b.c.d.v1.0")
 
 	if !result.OK {
 		t.Fatalf("Expected OK=true, got OK=false with error: %s", result.Error)
 	}
 
-	if len(result.Segments) != 1 {
-		t.Fatalf("Expected 1 segment, got %d", len(result.Segments))
+	if len(result.Segments) != 2 {
+		t.Fatalf("Expected 2 segments for instance ID, got %d", len(result.Segments))
 	}
 
+	// Component fields are in the first (type) segment
 	seg := result.Segments[0]
 
 	if seg.Vendor != "myvendor" {
@@ -417,8 +424,11 @@ func TestParseID_AllComponents(t *testing.T) {
 		}
 	}
 
-	if seg.IsType {
-		t.Error("Expected is_type=false for instance ID")
+	// Check overall ID type (IsSchema), not individual segment's IsType
+	// The first segment is a type segment (ends with ~), so seg.IsType is true
+	// But the overall ID is an instance (doesn't end with ~), so result.IsSchema is false
+	if result.IsSchema {
+		t.Error("Expected is_schema=false for instance ID")
 	}
 }
 
